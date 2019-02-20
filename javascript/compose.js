@@ -1,5 +1,5 @@
 $(document).ready(function() {
-    // slide();
+    slide();
     if (isAPIAvailable()) {
         $("input[name='file_recipient']").change(handleFileSelect);
     }
@@ -51,6 +51,9 @@ function getEmails() {
     $("input[name='recipient_count']").val(emails.length);
     $('#recipient').val(emails.join(', '));
     countEmails();
+    debugger;
+    $("#recipient_type").val('recipient').change();
+    slide();
 }
 
 function tokenizeKeys(data) {

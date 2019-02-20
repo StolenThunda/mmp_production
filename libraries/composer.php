@@ -187,7 +187,7 @@ class Composer {
 							'content' => form_dropdown('recipient_type', $vars['recipient_types'], $default['recipient_type'] , 'id="recipient_type"')
 						),
 						'csv_object' => array(
-							'type' => 'text',
+							'type' => 'hidden',
 							'value' => ''
 						),
 					)
