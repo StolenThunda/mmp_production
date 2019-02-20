@@ -1,0 +1,26 @@
+.service-list li {
+    cursor: move;
+    position: relative;
+}
+
+.service-list li.enabled-service:after,
+.service-list li.disabled-service:after {
+    color: #4ba508;
+    content: '\F00C';
+    font-family: 'FontAwesome';
+    font-size: 10px;
+    font-weight: 400;
+    position: absolute;
+    right: 10px;
+    top: 5px;
+}
+
+.service-list li.disabled-service:after {
+    color: #E6E6E6;
+    content: '\F05E';
+}
+
+.setting-field .service-description {
+    color: gray;
+    margin-bottom: 10px;
+}
