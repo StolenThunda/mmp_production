@@ -1,4 +1,3 @@
-<?php $this->extend('ee:_templates/default-nav-table'); ?>
 <div class="tbl-ctrls">
 <?=form_open($table['base_url'])?>
 	<fieldset class="tbl-search right">
@@ -34,7 +33,7 @@
 						<h1><?=$email->subject?></h1>
 						<div class="txt-wrap">
 							<ul class="checklist mb">
-								<li><b><?=lang('sent')?>:</b> <?=$localize->human_time($email->cache_date->format('U'))?> <?=lang('to')?> <?=$email->total_sent?> <?=lang('recipients')?></li>
+								<li><b><?=lang('sent')?>:</b> <?=$email->cache_date->format('U')?> <?=lang('to')?> <?=$email->total_sent?> <?=lang('recipients')?></li>
 							</ul>
 							<?=ee('Security/XSS')->clean($email->message)?>
 						</div>

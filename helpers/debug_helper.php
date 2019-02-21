@@ -43,7 +43,7 @@
                 foreach($this->sections as $sect){
                     if ($sect === $type){
                         $this->messages[] = array(
-                                'str' => $str,
+                                'str' => ($method === 'table') ? $str : addslashes($str) ,
                                 'type' => $type,
                                 'method' => $method,
                                 'style' => $style,

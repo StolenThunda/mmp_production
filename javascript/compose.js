@@ -1,5 +1,7 @@
 $(document).ready(function() {
+    setUI();
     slide();
+
     if (isAPIAvailable()) {
         $("input[name='file_recipient']").change(handleFileSelect);
     }
@@ -51,7 +53,6 @@ function getEmails() {
     $("input[name='recipient_count']").val(emails.length);
     $('#recipient').val(emails.join(', '));
     countEmails();
-    debugger;
     $("#recipient_type").val('recipient').change();
     slide();
 }
@@ -76,6 +77,7 @@ function showPlaceholders(headers) {
     $('.sidebar').after("<table id='placeholder'><caption>Placeholders</caption></table>");
     headers.forEach(el => {
         var test = $('<button/>', {
+            class: 'placeholder icon-envelope',
             text: el,
             click: function() {
                 var plain = $('textarea[name=\'plaintext_alt\']');
@@ -131,6 +133,10 @@ function isAPIAvailable() {
         document.writeln(' - Opera: Not supported');
         return false;
     }
+}
+
+function setUI() {
+    //$('select').dropdown();
 }
 
 function handleFileSelect(evt) {

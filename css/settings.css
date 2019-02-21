@@ -24,3 +24,31 @@
     color: gray;
     margin-bottom: 10px;
 }
+
+.placeholder {
+    width: 100%;
+    overflow: hidden;
+    background: #17aa56;
+    color: #fff;
+    border-radius: 7px;
+    box-shadow: 0 5px #01bf75;
+    padding: 12px 30px 12px 45px;
+}
+
+.placeholder:hover {
+    background-color: #476e9e;
+}
+
+.placeholder:active {
+    position: relative;
+    top: 1px;
+}
+
+.placeholder:before {
+    position: absolute;
+    left: 0;
+    width: 40%;
+    font-size: 160%;
+    line-height: 0.8;
+    color: #01bf75;
+}

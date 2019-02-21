@@ -286,11 +286,11 @@ class Composer {
 				)
 			);
 		}
-   		$vars['cp_page_title'] = lang(EXT_SHORT_NAME.'_compose_heading');
+   		$vars['cp_page_title'] = lang('compose_heading');
 		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email:send');
-		$vars['save_btn_text'] = lang(EXT_SHORT_NAME.'_compose_send_email');
-		$vars['save_btn_text_working'] = lang(EXT_SHORT_NAME.'_compose_sending_email');
-		// ee()->cp()->set_breadcrumb( ee('CP/URL', EXT_SETTINGS_PATH.'/email:send')->compile(), $vars['cp_page_title']);
+		$vars['save_btn_text'] = lang('compose_send_email');
+		$vars['save_btn_text_working'] = lang('compose_sending_email');
+		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email:send')->compile(), $vars['cp_page_title']);
 		console_message($vars, __METHOD__);
 		ee()->cp->load_package_js('jquery_csv');
 		ee()->cp->load_package_js('compose');
@@ -366,7 +366,7 @@ class Composer {
 		}
 
 		// create lookup array for easy email lookup
-		if (isset($csv_object)){
+		if ($csv_object !== ""){
 			$rows =  json_decode($csv_object, TRUE);
 			var_dump($rows);
 			foreach ($rows as $row){
@@ -455,17 +455,17 @@ class Composer {
 		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
 
-		// //  Send a single email
-		// if (count($groups) == 0)
-		// {
-		// 	console_message("Sending one", __METHOD__);
-		// 	$debug_msg = $this->deliverOneEmail($email, $recipient);
-		// 	console_message($debug_msg, __METHOD__);
-		// 	ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
-		// 	ee()->functions->redirect(
-		// 		ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
-		// 	);
-		// }
+		//  Send a single email
+		if (count($groups) == 0)
+		{
+			console_message("Sending one", __METHOD__);
+			$debug_msg = $this->deliverOneEmail($email, $recipient);
+			console_message($debug_msg, __METHOD__);
+			ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
+			ee()->functions->redirect(
+				ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
+			);
+		}
 
 		// Get member group emails
 		$member_groups = ee('Model')->get('MemberGroup', $groups)
@@ -768,17 +768,10 @@ class Composer {
 		if (count($this->csv_lookup)){
 			$found = $this->csv_lookup[$to];
 			$tmp_message = strtr($email->message, $found);
-			// ee()->logger->developer(__METHOD__. ' (lookup)');
-			// ee()->logger->developer(__METHOD__. ' (type of $found): '. gettype($found));
-			// foreach($found as $key => $val){
-			// 	ee()->logger->developer(__METHOD__. ": Searching '{$tmp_message}' for '{$key}' and replacing with '{$val}'");
-			// 	ee()->logger->developer(__METHOD__. ": Resulting Search for '{$key}' = ". ((stripos($tmp_message, '{') !== false) ? 'True' : 'False'));
-			// 	$tmp_message = preg_replace("/${key}/", $val, $tmp_message);
-			// }
 			ee()->logger->developer(__METHOD__. '(tmp) : ' . $tmp_message);
 		}
 		ee()->logger->developer(__METHOD__. ' (orig): ' . $email->message);
-		// ee()->email->clear(TRUE);
+		ee()->email->clear(TRUE);
 		ee()->email->wordwrap  = $email->wordwrap;
 		ee()->email->mailtype  = $email->mailtype;
 		ee()->email->from($email->from_email, $email->from_name);
@@ -885,7 +878,7 @@ class Composer {
 			)
 		);
 
-		$table->setNoResultsText('no_cached_emails', 'create_new_email', ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email:compose'));
+		$table->setNoResultsText('no_cached_emails', 'create_new_email', ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose'));
 
 		$page = ee()->input->get('page') ? ee()->input->get('page') : 1;
 		$page = ($page > 0) ? $page : 1;
@@ -923,17 +916,17 @@ class Composer {
 			->limit(20)
 			->offset($offset)
 			->all();
+		// $emails = $emails->all();
 
 		$vars['emails'] = array();
 		$data = array();
-		foreach ((array)$emails as $email)
+		foreach ($emails as $email)
 		{
 			// Prepare the $email object for use in the modal
 			$email->text_fmt = ($email->text_fmt != 'none') ?: 'br'; // Some HTML formatting for plain text
-			$email->subject = htmlentities($this->censorSubject($email), ENT_QUOTES, 'UTF-8');
+			// $email->subject = htmlentities($this->censorSubject($email), ENT_QUOTES, 'UTF-8');
 
 
-			console_message($email, __METHOD__);
 			$data[] = array(
 				$email->subject,
 				ee()->localize->human_time($email->cache_date->format('U')),
@@ -947,7 +940,7 @@ class Composer {
 					),
 					'sync' => array(
 						'title' => lang('resend'),
-						'href' => ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email:resend/'. $email->cache_id)
+						'href' => ee('CP/URL',EXT_SETTINGS_PATH.'/email:resend/'. $email->cache_id)
 					))
 				),
 				array(
@@ -976,10 +969,10 @@ class Composer {
 			$vars['emails'][] = $email;
 		}
 
+		console_message($vars, __METHOD__);
 		$table->setData($data);
 
-		//  $base_url = ee('CP/URL')->make('utilities/communicate/sent');
-		$base_url = ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email:sent');
+		$base_url = ee('CP/URL',EXT_SETTINGS_PATH.'/email:sent');
 		$vars['table'] = $table->viewData($base_url);
 
 		$vars['pagination'] = ee('CP/Pagination', $count)
@@ -996,21 +989,13 @@ class Composer {
 			);
 		}
 
+		$vars['cp_page_title'] = lang('view_email_cache');
 		ee()->javascript->set_global('lang.remove_confirm', lang('view_email_cache') . ': <b>### ' . lang('emails') . '</b>');
-		ee()->cp->add_js_script(array(
-			'file' => array('cp/confirm_remove'),
-		));
-		$vars['base_url'] = $base_url;
-		$vars['cp_page_title'] = lang(EXT_SHORT_NAME.'_view_email_cache');
-		$vars['cp_breadcrumbs'] = array(ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email:sent'), lang(EXT_SHORT_NAME.'_view_email_cache'));
-		$vars['cp_homepage_url'] = array($base_url->compile());
-		console_message($vars, __METHOD__);
 
-		return array(
-			'view' => 'email/sent',
-			'vars' => $vars);
-		// return ee('View')->make(EXT_SHORT_NAME.':email/sent')->render($vars);
-		// ee()->cp->render(EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email/sent', $vars);
+		ee()->cp->add_js_script(array( 'file' => array('cp/confirm_remove'),));
+
+		$vars['base_url'] = $base_url;
+		return array($vars);
 	}
 
 	/**

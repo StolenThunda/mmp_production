@@ -1,21 +1,36 @@
 # ManyMailerPlus
 
-## ChangeLog [v0.1.0] - 2019-02-20
+All notable changes to this project will be documented in this file.
 
-### Added
-Milestones
-- emails successfully
-- upload csv
-- paste csv
-- parse emails from csv
-- creates placeholder buttons
-- sends email replacing placeholders
+The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## ChangeLog
+
+## [v0.1.0] - 2019-02-20
+
+### Milestones
+
+- [x] emails successfully
+- [x] upload csv
+- [x] paste csv
+- [x] parse emails from csv
+- [x] creates placeholder buttons
+- [x] sends email replacing placeholders
 
 ### Todo (functionality)
-- Get working sent page with resend functionality
+
+- [ ] Get working sent page with resend functionality
+- [ ] update lang file
+
+  ***Wishlist***
+  
+  - [ ] better styling
+  - [ ] better sidebar (jquery)
+  - [ ] handle mobile
 
 ### Bugs
+
 - double message on compose page
-    - ![Double Message](http://http://104.248.32.41/admin.php?/cp/addons/settings/manymailerplus/images/double_messages.png)
-### Wishlist
-- what is about to be removed ?
+
+  - ![Double Message](./images/double_messages.png)
+
