@@ -1,27 +1,28 @@
-<div class="tbl-ctrls">
-<?=form_open($table['base_url'])?>
-	<fieldset class="tbl-search right">
-		<input placeholder="<?=lang('type_phrase')?>" type="text" name="search" value="<?=htmlentities($table['search'], ENT_QUOTES, 'UTF-8')?>">
-		<input class="btn submit" type="submit" value="<?=lang('search_emails_button')?>">
-	</fieldset>
-	<h1><?php echo isset($cp_heading) ? $cp_heading : $cp_page_title?></h1>
-	<div class="app-notice-wrap"><?=ee('CP/Alert')->getAllInlines()?></div>
-	<?php $this->embed('ee:_shared/table', $table); ?>
-
-	<?=$pagination?>
-
-	<?php if ( ! empty($table['columns']) && ! empty($table['data'])): ?>
-		<fieldset class="tbl-bulk-act hidden">
-			<select name="bulk_action">
-				<option value="">-- <?=lang('with_selected')?> --</option>
-				<option value="remove" data-confirm-trigger="selected" rel="modal-confirm-remove"><?=lang('remove')?></option>
-			</select>
-			<button class="btn submit" data-conditional-modal="confirm-trigger" ><?=lang('submit')?></button>
+<div class="box table-list-wrap">
+	<div class="tbl-ctrls">
+	<?=form_open($table['base_url'])?>
+		<fieldset class="tbl-search right">
+			<input placeholder="<?=lang('type_phrase')?>" type="text" name="search" value="<?=htmlentities($table['search'], ENT_QUOTES, 'UTF-8')?>">
+			<input class="btn submit" type="submit" value="<?=lang('search_emails_button')?>">
 		</fieldset>
-	<?php endif; ?>
-<?=form_close()?>
-</div>
+		<h1><?php echo isset($cp_heading) ? $cp_heading : $cp_page_title?></h1>
+		<div class="app-notice-wrap"><?=ee('CP/Alert')->getAllInlines()?></div>
+		<?php $this->embed('ee:_shared/table', $table); ?>
 
+		<?=$pagination?>
+
+		<?php if ( ! empty($table['columns']) && ! empty($table['data'])): ?>
+			<fieldset class="tbl-bulk-act hidden">
+				<select name="bulk_action">
+					<option value="">-- <?=lang('with_selected')?> --</option>
+					<option value="remove" data-confirm-trigger="selected" rel="modal-confirm-remove"><?=lang('remove')?></option>
+				</select>
+				<button class="btn submit" data-conditional-modal="confirm-trigger" ><?=lang('submit')?></button>
+			</fieldset>
+		<?php endif; ?>
+	<?=form_close()?>
+	</div>
+</div>
 <?php foreach($emails as $email): ?>
 	<?php ee('CP/Modal')->startModal('email-' . $email->cache_id); ?>
 	<div class="modal-wrap modal-email-<?=$email->cache_id?> hidden">

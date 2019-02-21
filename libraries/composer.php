@@ -368,7 +368,6 @@ class Composer {
 		// create lookup array for easy email lookup
 		if ($csv_object !== ""){
 			$rows =  json_decode($csv_object, TRUE);
-			var_dump($rows);
 			foreach ($rows as $row){
 				$this->csv_lookup[$row["{{email}}"]] = $row;
 			}
@@ -455,17 +454,17 @@ class Composer {
 		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
 
-		//  Send a single email
-		if (count($groups) == 0)
-		{
-			console_message("Sending one", __METHOD__);
-			$debug_msg = $this->deliverOneEmail($email, $recipient);
-			console_message($debug_msg, __METHOD__);
-			ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
-			ee()->functions->redirect(
-				ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
-			);
-		}
+		// //  Send a single email
+		// if (count($groups) == 0)
+		// {
+		// 	console_message("Sending one", __METHOD__);
+		// 	$debug_msg = $this->deliverOneEmail($email, $recipient);
+		// 	console_message($debug_msg, __METHOD__);
+		// 	ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
+		// 	ee()->functions->redirect(
+		// 		ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
+		// 	);
+		// }
 
 		// Get member group emails
 		$member_groups = ee('Model')->get('MemberGroup', $groups)
@@ -766,6 +765,7 @@ class Composer {
 	{
 		$tmp_message = $this->formatMessage($email);
 		if (count($this->csv_lookup)){
+			console_message($to, 'current email');
 			$found = $this->csv_lookup[$to];
 			$tmp_message = strtr($email->message, $found);
 			ee()->logger->developer(__METHOD__. '(tmp) : ' . $tmp_message);

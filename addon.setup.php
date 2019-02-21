@@ -24,7 +24,7 @@ return array(
       'author' => 'Amphibian',
       'author_url' => 'http://amphibian.info',
       'description' => 'Let your transactional emails get chaperoned by the pros.',
-      'docs_url' => 'http://amphibian.info/software/ee/escort',
+      'docs_url' => './README.md',
       'name' => EXT_NAME,
       'namespace' => EXT_SHORT_NAME,
       'settings_exist' => true,

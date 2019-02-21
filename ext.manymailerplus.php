@@ -23,7 +23,7 @@ require_once(PATH_THIRD.EXT_SHORT_NAME.'/config.php');
 
 class ManyMailerPlus_ext {
 	var $config;
-	var $debug = FALSE;
+	var $debug = TRUE;
 	var $email_crlf = '\n';
 	var $email_in = array();
 	var $email_out = array();
@@ -57,8 +57,6 @@ class ManyMailerPlus_ext {
 		$this->settings = $settings;
 		$this->site_id = ee()->config->item('site_id');
 		$this->dbg_msgs = new MessageArray(); 
-		$this->dbg_msgs->addMsg("Test: MESSAGE");
-		$this->dbg_msgs->print();
 		if (!$this->services_loaded OR  !$this->sidebar_loaded)
 		{
 			$this->dbg_msgs->addMsg("Error loading: Services/Sidebar");
@@ -68,6 +66,7 @@ class ManyMailerPlus_ext {
 				'base_url' => ee('CP/URL',EXT_SETTINGS_PATH),
 				'cp_page_title' => lang(EXT_SHORT_NAME),
 				'save_btn_text' => 'btn_save_settings',
+				'categories' => array_keys($this->sidebar_options),
 				'save_btn_text_working' => 'btn_saving',
 			);
 			return $this->control($vars);
@@ -127,10 +126,10 @@ class ManyMailerPlus_ext {
 	{	    		
 		try {
 			$viewName = null;
-			$this->current_service = (ee()->uri->segment(5)) ? ee()->uri->segment(5) : "intro";
+			$this->current_service = ee()->uri->segment(5, 'intro');
+			
 			$found = $this->_remap($this->current_service);
 			if (!is_array($found))  console_message($this->current_service, "Invalid URI", TRUE);
-			console_message($found, "Valid Top lvl link");
 			$settings = $this->get_settings();
 			$isAjax = 	ee('Request')->isAjax();
 			$services_sorted = array();
@@ -167,6 +166,7 @@ class ManyMailerPlus_ext {
 				'current_settings' => $settings,
 				'sections' => [],
 				'ee_version' => $this->ee_version(),
+				'categories' => array_keys($this->sidebar_options),
 				'save_btn_text' => 'btn_save_settings',
 				'save_btn_text_working' => 'btn_saving',
 			);
@@ -206,7 +206,6 @@ class ManyMailerPlus_ext {
 					}
 					break;
 				case 'services':
-					console_message($vars, "services Vars switch");
 					$title = end($vars['active']);
 					$vars['cp_page_title'] = lang(''.$title);
 					$vars['services'] = $services_sorted;
@@ -227,7 +226,7 @@ class ManyMailerPlus_ext {
 			if (!isset($vars['left_nav'])){
 				$sidebar = ee('CP/Sidebar')->make();
 				foreach(array_keys($this->sidebar_options) as $category){
-					$left_nav = $sidebar->addHeader(lang(EXT_SHORT_NAME."_{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
+					$left_nav = $sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
 					if($category == $vars['active'][0] AND isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
 						$list_items = $left_nav->addBasicList();	
 						foreach ($this->sidebar_options[$category]['links'] as $link_text) {
@@ -256,7 +255,8 @@ class ManyMailerPlus_ext {
 			$viewName = EXT_SHORT_NAME.':' . (is_null($viewName) ? 'settings' : $viewName);
 			if ($this->debug AND count($this->dbg_msgs->data) > 0) $this->viewDbg($vars);
 			
-			console_message(array('Dbg Msgs' => $this->dbg_msgs->data, 'vars' =>$vars), 'Final vars before render');
+			console_message($this->dbg_msgs,'Debug Msgs');
+			console_message($vars, 'Final vars before render');
 			// render page
 			return ee('View')->make($viewName)->render($vars);
 	}
@@ -265,9 +265,6 @@ class ManyMailerPlus_ext {
 	{
 		if (!empty($additional_links)){
 			foreach($vars['active'] as $active){
-				// console_message($vars['active'],__)METHOD__);
-				// console_message($active,__METHOD__);
-				// console_message((array_key_exists($active, $this->sidebar_options)),__METHOD__);
 				if (array_key_exists($active, $this->sidebar_options)){
 					$this->sidebar_options[$active]['links'] = array_unique(array_merge($this->sidebar_options[$active]['links'], $additional_links));
 				}
@@ -281,16 +278,12 @@ class ManyMailerPlus_ext {
 	function viewDbg(&$vars){
 		// add any accumalated debug messages
 		$content = $this->dbg_msgs->data;
-		console_message($content, 'DBG content');
-		// reset/clear debug message array
-		// unset($this->dbg_msgs);
-		// $this->dbg_msgs = array();
 	
 		// add messages to page
 		ee()->load->helper('html');
-		foreach($content as $msg){
+		foreach($this->dbg_msgs as $msg){
 			$vars['form_vars']['extra_alerts'][] = array('config_vars');
-			ee('CP/Alert')->makeInline('config_vars')
+			ee('CP/Alert')->make($msg->title)
 				->asTip()
 				->withTitle($msg->title)
 				->addToBody($msg->msg)
@@ -323,7 +316,6 @@ class ManyMailerPlus_ext {
 		);
 			
 		if (array_key_exists($this->current_service, $vars['services'])){
-			console_message($this->current_service);
 			foreach($vars['services'][$this->current_service] as $field_name)
 			{
 				$sections[] = array(
@@ -344,9 +336,8 @@ class ManyMailerPlus_ext {
 		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array($sections);
 		$this->current_service = 'services:'. end($vars['active']); 
-		$this->dbg_msgs->addMsg("Current Svc: ". end($vars['active']));
-		$this->dbg_msgs->addMsg("Sidebar Links <pre>".print_r($vars['services'], true)."</pre>");
-		return $this->_update_sidebar_options($vars,  array_keys($this->services));
+		console_message($this->dbg_msgs);
+		return $vars;
 	}
 	
 	function save_settings()
@@ -1263,8 +1254,8 @@ class ManyMailerPlus_ext {
 		
 		$data = array(
 			'class'		=> __CLASS__,
-			// 'method'	=> 'email_send',
-			// 'hook'		=> 'email_send',
+			'method'	=> 'email_send',
+			'hook'		=> 'email_send',
 			'settings'	=> serialize($this->settings),
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
