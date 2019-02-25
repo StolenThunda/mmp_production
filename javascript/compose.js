@@ -37,33 +37,89 @@ function countEmails() {
 
 function getEmails() {
     var raw = $("#csv_recipient").val();
-    var data = $.csv.toObjects(raw);
+    var csvObj = validData($.csv.toObjects(raw));
+    if (csvObj) {
+        $('input[name="csv_object"]').val(csvObj.data_string);
+        $("input[name='recipient_count']").val(csvObj.recipient_count);
+        $('#recipient').val(csvObj.email_list);
+        $("#recipient_type").val('recipient').change();
+        showPlaceholders(csvObj.headers);
+        countEmails();
+        slide();
+    }
+}
 
-    data = tokenizeKeys(data);
+function validData(data) {
+    var errs = [];
+    var first_row = Object.keys(data[0]); // should be column header
+    var test_row = Object.keys(data[1]); // should begin data
 
-    $('input[name="csv_object"]').val(JSON.stringify(data));
-    var headers = Object.keys(data[0]);
-    showPlaceholders(headers);
+    // has an email header column?
+    var key = getMailKey(first_row);
 
-    var emails = [];
-    data.forEach(element => {
-        emails.push(element['{{email}}']);
-    });
+    // has an email column?
+    var email_column = first_row.filter(word => isValidEmailAddress(word));
+    if (!key) errs.push("Missing Email Column");
+    if (email_column.length > 0) errs.push("No Email Column found");
 
-    $("input[name='recipient_count']").val(emails.length);
-    $('#recipient').val(emails.join(', '));
-    countEmails();
-    $("#recipient_type").val('recipient').change();
-    slide();
+    // generate email list 
+    if (key) {
+        var emails = [];
+        data.forEach(element => {
+            emails.push(element[key]);
+        });
+    }
+    if (errs.length === 0) {
+        return {
+            'mailkey': key,
+            'headers': tokenizeKeys(first_row),
+            'data_string': JSON.stringify(data),
+            'data': data,
+            'recipient_count': emails.length,
+            'email_list': emails.join(', ')
+        };
+    } else {
+        var msg = errs.join('<br/>');
+        debugger;
+
+        msg = "<ul class='sidebar'>";
+        errs.forEach(element => {
+            msg += `<li>${element}</li>`;
+        });
+        msg += '</ul>';
+        swal({
+            title: 'Invalid Data',
+            'html': msg,
+            'icon': 'error'
+        });
+    }
+}
+
+function getMailKey(data) {
+    var retVal = false;
+    var keyColumn = ['mail', 'email', 'address'];
+    var keys = [];
+    keys.push(data.find((k) => {
+        k = k.trim()
+        var isEmail = isValidEmailAddress(k);
+        var inArray = $.inArray(k, keyColumn);
+        return (inArray >= 0 && !isEmail);
+    }));
+    return (typeof keys[0] === 'undefined') ? retVal : keys[0];
+}
+
+function isValidEmailAddress(emailAddress) {
+    var pattern = /^([a-z\d!#$%&'*+\-\/=?^_`{|}~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+(\.[a-z\d!#$%&'*+\-\/=?^_`{|}~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+)*|"((([ \t]*\r\n)?[ \t]+)?([\x01-\x08\x0b\x0c\x0e-\x1f\x7f\x21\x23-\x5b\x5d-\x7e\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|\\[\x01-\x09\x0b\x0c\x0d-\x7f\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))*(([ \t]*\r\n)?[ \t]+)?")@(([a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|[a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF][a-z\d\-._~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]*[a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])\.)+([a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|[a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF][a-z\d\-._~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]*[a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])\.?$/i;
+    return pattern.test(emailAddress);
 }
 
 function tokenizeKeys(data) {
     var newData = [];
-    data.forEach(row => {
+    data.forEach(key => {
         var newRow = {};
-        for (const key in row) {
-            newRow["{{" + key + "}}"] = row[key];
-        }
+        var lowerKey = key.toLowerCase();
+        var newKey = lowerKey.replace(' ', '_');
+        newRow = "{{" + newKey + "}}";
         newData.push(newRow);
     });
     return newData;
@@ -120,17 +176,13 @@ function isAPIAvailable() {
     } else {
         // source: File API availability - http://caniuse.com/#feat=fileapi
         // source: <output> availability - http://html5doctor.com/the-output-element/
-        document.writeln('The HTML5 APIs used in this form are only available in the following browsers:<br />');
-        // 6.0 File API & 13.0 <output>
-        document.writeln(' - Google Chrome: 13.0 or later<br />');
-        // 3.6 File API & 6.0 <output>
-        document.writeln(' - Mozilla Firefox: 6.0 or later<br />');
-        // 10.0 File API & 10.0 <output>
-        document.writeln(' - Internet Explorer: Not supported (partial support expected in 10.0)<br />');
-        // ? File API & 5.1 <output>
-        document.writeln(' - Safari: Not supported<br />');
-        // ? File API & 9.2 <output>
-        document.writeln(' - Opera: Not supported');
+        var warning = 'The HTML5 APIs used in this form are only available in the following browsers:<br />';
+        warning += ' - Google Chrome: 13.0 or later<br />'; // 6.0 File API & 13.0 <output>
+        warning += ' - Mozilla Firefox: 6.0 or later<br />'; // 3.6 File API & 6.0 <output>
+        warning += ' - Internet Explorer: Not supported (partial support expected in 10.0)<br />'; // 10.0 File API & 10.0 <output>
+        warning += ' - Safari: Not supported<br />'; // ? File API & 5.1 <output>
+        warning += ' - Opera: Not supported'; // ? File API & 9.2 <output>
+        document.writeln(warning);
         return false;
     }
 }

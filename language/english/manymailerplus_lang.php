@@ -69,6 +69,7 @@ $lang = array(
 	'primary_recipients' => 'Primary recipient(s)',
 	'primary_recipients_desc' => 'To Email(s). Separate multiple recipients with a comma.',
 	'compose_default_recipient_type' => 'Default',
+	'total_emails_sent' => 'Total Emails Sent: ',
 	'csv_recipient' => 'CSV data',
 	'csv_recipient_desc' => 'Raw CSV data',
 	'file_recipent' => 'CSV file upload',

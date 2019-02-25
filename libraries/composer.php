@@ -294,6 +294,7 @@ class Composer {
 		console_message($vars, __METHOD__);
 		ee()->cp->load_package_js('jquery_csv');
 		ee()->cp->load_package_js('compose');
+		ee()->cp->add_to_foot('<script src="https://unpkg.com/sweetalert2@7.17.0/dist/sweetalert2.all.js"></script>');
 		return array($vars);
 	}
 
