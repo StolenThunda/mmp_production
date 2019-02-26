@@ -383,7 +383,6 @@ class Composer {
 		// create lookup array for easy email lookup
 		if (isset($csv_object) AND $csv_object !== ""){
 			$rows =  json_decode($csv_object, TRUE);
-			console_message($rows, 'csv ROW');
 			foreach ($rows as $row){
 				$this->csv_lookup[$row[$mailKey]] = $row;
 			}
@@ -751,14 +750,59 @@ class Composer {
 		{
 			$email_address = array_shift($recipient_array);
 
+			if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
+				$tmp_message = $this->formatMessage($email);
+				$tmp_plaintext = $email->plaintext_alt; 
+				$found = $this->csv_lookup[$email_address];
+				console_message($found, 'Lookup record');
+				$tmp_message= strtr($email->message, $found);
 
-			if ( ! $this->deliverEmail($email, $email_address))
-			{
-				$email->delete();
+				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
 
-				$debug_msg = ee()->email->print_debugger(array());
+				// standard 'First Last <email address> format
+				$to = "\"{$found['{{first_name}}']} {$found['{{last_name}}']}\"  <{$found['{{email}}']}>"; 
+				ee()->logger->developer(__METHOD__. '('. $to .') : ' . $tmp_message);
+				console_message($to, 'current email');
+				$cache_data = array(
+					'cache_date'		=> ee()->localize->now,
+					'total_sent'		=> 0,
+					'from_name'	 		=> $email->from_name,
+					'from_email'		=> $email->from_email,
+					'recipient'			=> $to,
+					'cc'				=> $email->cc,
+					'bcc'				=> $email->bcc,
+					'recipient_array'	=> array(),
+					'subject'			=> $email->subject,
+					'message'			=> $tmp_message,
+					'mailtype'			=> $email->mailtype,
+					'wordwrap'	  		=> $email->wordwrap,
+					'text_fmt'			=> $email->text_fmt,
+					'total_sent'		=> 0,
+					'plaintext_alt'		=> $tmp_message,
+					'attachments'		=> $this->attachments,
+				);
 
-				show_error(lang('error_sending_email').BR.BR.$debug_msg);
+				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
+				$singleEmail->save();
+				if ( ! $this->deliverEmail($singleEmail, $to))
+				{
+					$singleEmail->delete();
+
+					$debug_msg = ee()->email->print_debugger(array());
+
+					show_error(lang('error_sending_email').BR.BR.$debug_msg);
+				}
+				$singleEmail->total_sent++;
+				$singleEmail->save();
+			}else{				// Assign data for caching
+				if ( ! $this->deliverEmail($email, $email_address))
+				{
+					$email->delete();
+
+					$debug_msg = ee()->email->print_debugger(array());
+
+					show_error(lang('error_sending_email').BR.BR.$debug_msg);
+				}
 			}
 			$email->total_sent++;
 		}
@@ -779,21 +823,6 @@ class Composer {
 	 */
 	private function deliverEmail(EmailCache $email, $to, $cc = NULL, $bcc = NULL)
 	{
-		$tmp_message = $this->formatMessage($email);
-		$tmp_plaintext = $email->plaintext_alt; 
-		if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
-			$found = $this->csv_lookup[$to];
-			console_message($found, 'Lookup record');
-			$tmp_message= strtr($email->message, $found);
-			ee()->logger->developer(__METHOD__. '(tmp) : ' . $tmp_message);
-
-			if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
-
-			// standard 'First Last <email address> format
-			$to = "\"{$found['{{first_name}}']} {$found['{{last_name}}']}\"  <{$found['{{email}}']}>"; 
-			console_message($to, 'current email');
-		}
-		ee()->logger->developer(__METHOD__. ' (orig): ' . $email->message);
 		ee()->email->clear(TRUE);
 		ee()->email->wordwrap  = $email->wordwrap;
 		ee()->email->mailtype  = $email->mailtype;
@@ -811,7 +840,7 @@ class Composer {
 		}
 
 		ee()->email->subject($this->censorSubject($email));
-		ee()->email->message($tmp_message, $email->plaintext_alt);
+		ee()->email->message($this->formatMessage($email), $email->plaintext_alt);
 
  		foreach ($email->attachments as $attachment)
 		{

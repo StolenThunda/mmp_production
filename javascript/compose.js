@@ -74,7 +74,6 @@ function validData(data) {
             formatted.push(`${row.first_name} ${row.last_name} <${row[key]}>`);
             var newRow = {};
             for (var itm in row) {
-                debugger;
                 var token_key = `{{${itm}}}`;
                 newRow[token_key] = row[itm];
             }
