@@ -445,6 +445,7 @@ class Composer {
 				break;
 		}
 
+		$subject = "${subject} (TEMPLATE) ";
 
 		// Assign data for caching
 		$cache_data = array(
@@ -772,7 +773,7 @@ class Composer {
 					'cc'				=> $email->cc,
 					'bcc'				=> $email->bcc,
 					'recipient_array'	=> array(),
-					'subject'			=> $email->subject,
+					'subject'			=> str_replace('(TEMPLATE) ', '', $email->subject),
 					'message'			=> $tmp_message,
 					'mailtype'			=> $email->mailtype,
 					'wordwrap'	  		=> $email->wordwrap,
@@ -958,10 +959,10 @@ class Composer {
 		$count = $emails->count();
 
 		$sort_map = array(
-			'subject' => 'subject',
 			'date' => 'cache_date',
-			'total_sent' => 'total_sent',
+			'subject' => 'subject',
 			'status' => 'status',
+			'total_sent' => 'total_sent',
 		);
 
 		$emails = $emails->order($sort_map[$table->sort_col], $table->sort_dir)

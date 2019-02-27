@@ -198,7 +198,7 @@ function isAPIAvailable() {
         warning += ' - Internet Explorer: Not supported (partial support expected in 10.0)<br />'; // 10.0 File API & 10.0 <output>
         warning += ' - Safari: Not supported<br />'; // ? File API & 5.1 <output>
         warning += ' - Opera: Not supported'; // ? File API & 9.2 <output>
-        document.writeln(warning);
+        document.body.innerHTML = warning;
         return false;
     }
 }
@@ -265,7 +265,7 @@ function dumpHiddenVals() {
     var msg = $("<table/>");
     $('input[type="hidden"]').each(function() {
         var val = $(this).val();
-        var val = (val.length > 100) ? val.substring(0, 100) + '...' : val;
+        val = (val.length > 100) ? val.substring(0, 100) + '...' : val;
         console.log($(this).attr('name') + ": " + $(this).val());
         msg.append("<tr><td>" + $(this).attr('name') + "</td><td>" + val + "</td></tr>");
     });
