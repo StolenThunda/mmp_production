@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ## ChangeLog
 
-## [0.1.3] - 2019-02-21 ***`committed (260e3bc8) 8 changed files`***
+
+## [0.1.3] - 2019-02-27 ***`committed (516df4) 3 changed files`***
+
+- Updates to documentation
+
+## [0.1.3] - 2019-02-27 ***`committed (260e3bc8) 8 changed files`***
 
 ### Milestones
 
@@ -16,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 - [ ] find a way to recreate "template" email state
 
-## [0.1.21] - 2019-02-21 ***`committed (2d88c9a) 4 changed files`***
+## [0.1.21] - 2019-02-26 ***`committed (2d88c9a) 4 changed files`***
 
 ### Milestones
 
@@ -27,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 - human readable time in email modal
 
-## [0.1.2] - 2019-02-21 ***`many commits`***
+## [0.1.2] - 2019-02-26 ***`many commits`***
 
 Recovery from git fumble
 
