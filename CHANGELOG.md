@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ## ChangeLog
 
+## [0.1.3] - 2019-02-21 ***`committed (260e3bc8) 8 changed files`***
+
+### Milestones
+
+- Enable resending 'individual' emails
+
+### TODO
+
+- [ ] find a way to recreate "template" email state
+
+## [0.1.21] - 2019-02-21 ***`committed (2d88c9a) 4 changed files`***
+
+### Milestones
+
+- include external js files for better ui
+- hijacked default "View Email" modal
+
+### Fixes
+
+- human readable time in email modal
+
+## [0.1.2] - 2019-02-21 ***`many commits`***
+
+Recovery from git fumble
+
 ## [0.1.1] - 2019-02-21 ***`committed (2430d52) 13 changed files`***
 
 ### Minor Fixes

@@ -561,7 +561,6 @@ class Composer {
 
 		if ($batch_mode == FALSE)
 		{
-			ee()->logger->developer(__method__ . " Batch false Deliver MANY");
 			$total_sent = $this->deliverManyEmails($email);
 
 			$debug_msg = ee()->email->print_debugger(array());
