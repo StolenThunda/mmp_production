@@ -23,7 +23,7 @@ require_once(PATH_THIRD.EXT_SHORT_NAME.'/config.php');
 
 class ManyMailerPlus_ext {
 	var $config;
-	var $debug = TRUE;
+	var $debug = FALSE;
 	var $email_crlf = '\n';
 	var $email_in = array();
 	var $email_out = array();
@@ -85,11 +85,6 @@ class ManyMailerPlus_ext {
 				$service = explode(":", $method);
 				$service_func = end($service); 
 				$found = ($is_link_category($service[0]));
-				// console_message($is_link_category($service[0]), "Lnk Cat?: {$service[0]}");
-				// console_message($this->sidebar_options[$service[0]], "Cat LINKS");
-				// console_message($service, "service_array");
-				// console_message($service_func, "end(service_array)");
-				// console_message(array_search($service_func, $this->sidebar_options[$service[0]]['links']), "search result");
 				if ($found){ 
 					$retVars['current'] = $service_func;
 					$retVars['active'] = $service;
@@ -160,6 +155,7 @@ class ManyMailerPlus_ext {
 			
 			$this->current_service =  $found['current'];
 			$vars = array(
+				'debug' => $this->debug,
 				'base_url' =>  ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME),
 				'current_service' =>   $this->current_service,
 				'active' => $found['active'], 
@@ -193,14 +189,9 @@ class ManyMailerPlus_ext {
 								'in_Composer' => method_exists(new Composer, $this->current_service),
 								'vars' => $vars), "{$this->current_service} is Composer func?");
 							$composer_vars = ee()->composer->{$this->current_service}();
-							if (isset($composer_vars['vars'])){
-								$viewName = $composer_vars['view'];
-								$vars = array_merge($vars, $composer_vars['vars']);
-							} else {
-								$vars = array_merge($vars, $composer_vars[0]);
-							}
+							$vars = array_merge($vars, $composer_vars);
 							console_message($vars, "Merged Vars");
-							$vars = $this->_update_sidebar_options($vars);
+							$this->_update_sidebar_options($vars);
 						}
 						$this->dbg_msgs->addMsg("Vars: " .json_encode($vars, true));
 					}
@@ -216,7 +207,6 @@ class ManyMailerPlus_ext {
 					break;
 				default:
 					// call class function matching uri spec
-					// $vars = $this->{$this->current_service}($vars);
 					console_message($this->{$this->current_service}($vars), "calling Current service");
 					$vars = $this->{$this->current_service}($vars);
 					break;
@@ -234,11 +224,10 @@ class ManyMailerPlus_ext {
 						}
 					}
 				}
-				// $vars['left_nav'] = $sidebar->render();
 			}
 		
 			// render page
-			return $this->control($vars, $viewName);
+			return $this->control($vars);
 		} catch (\Exception $e) {
 			$e_message = "[".$e->getCode()."] ". $e->getMessage(). '::'.$e->getLine();
 			console_message($e_message, 'Unexpected ERROR BEGIN');
@@ -252,13 +241,12 @@ class ManyMailerPlus_ext {
 
 	private function control($vars, $viewName=null){
 			// add messages to final page options 
-			$viewName = EXT_SHORT_NAME.':' . (is_null($viewName) ? 'settings' : $viewName);
-			if ($this->debug AND count($this->dbg_msgs->data) > 0) $this->viewDbg($vars);
+			if (count($this->dbg_msgs->data) > 0) $this->viewDbg($vars);
 			
 			console_message($this->dbg_msgs,'Debug Msgs');
 			console_message($vars, 'Final vars before render');
 			// render page
-			return ee('View')->make($viewName)->render($vars);
+			return ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars);
 	}
 	
 	function _update_sidebar_options(&$vars, $additional_links = array())
@@ -270,25 +258,25 @@ class ManyMailerPlus_ext {
 				}
 			}
 		}
-		console_message($this->sidebar_options, "Final Sidebar Links");
-		return $vars;
 	}
 
 
 	function viewDbg(&$vars){
-		// add any accumalated debug messages
-		$content = $this->dbg_msgs->data;
-	
-		// add messages to page
-		ee()->load->helper('html');
-		foreach($this->dbg_msgs as $msg){
-			$vars['form_vars']['extra_alerts'][] = array('config_vars');
-			ee('CP/Alert')->make($msg->title)
-				->asTip()
-				->withTitle($msg->title)
-				->addToBody($msg->msg)
-				->canClose()
-				->now();
+		if ($this->debug){
+			// add any accumalated debug messages
+			$content = $this->dbg_msgs->data;
+		
+			// add messages to page
+			ee()->load->helper('html');
+			foreach($this->dbg_msgs as $msg){
+				$vars['form_vars']['extra_alerts'][] = array('config_vars');
+				ee('CP/Alert')->makeInline($msg->title)
+					->asAttention()
+					->withTitle($msg->title)
+					->addToBody($msg->msg)
+					->canClose()
+					->now();
+			}
 		}
 	}
 	#endregion
@@ -1281,6 +1269,4 @@ class ManyMailerPlus_ext {
 		}
 		return TRUE;		
 	}	
-	
-
 }

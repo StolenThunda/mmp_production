@@ -1,4 +1,3 @@
-
 <?php
 	ee()->cp->load_package_css('settings');
 	ee()->cp->load_package_js('settings');
@@ -8,7 +7,9 @@
 <div class="col-group ">
 	
 	<div>
-	<div class="app-notice-wrap"><?=ee('CP/Alert')->getAllInlines()?></div>
+		<?php if($debug == TRUE) : ?>
+			<div class="app-notice-wrap"><?=ee('CP/Alert')->getAllInlines()?></div>
+		<?php endif; ?>
 
 		<?php if($is_category) : ?>
 				<h1><?= lang($current_action.'_heading'); ?></h1>
@@ -22,4 +23,3 @@
 		<?php endif; ?>
 	</div>
 </div>
-

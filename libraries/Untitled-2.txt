@@ -1,0 +1,52 @@
+a:2:{
+    s:4:\"name\"; 
+    s:13:\"ee:EmailCache\";
+    s:6:\"values\";
+    a:16:{s:8:\"cache_id\";
+    i:119;s:10:\"cache_date\";
+    O:8:\"DateTime\":3:{
+        s:4:\"date\";
+        s:26:\"2019-02-22 19:16:13.000000\";
+        s:13:\"timezone_type\";
+        i:1;s:8:\"timezone\";
+        s:6:\"+00:00\";
+    }
+    s:10:\"total_sent\";
+    i:4;
+    s:9:\"from_name\";
+    s:29:\"tonymoses@texasbluesalley.com\";
+    s:10:\"from_email\";
+    s:29:\"tonymoses@texasbluesalley.com\";
+    s:9:\"recipient\";
+    s:107:\"tonym415@gmail.com, alexissimmons041712@gmail.com, tonymoses@texasbluesalley.com, antonio.moses79@gmail.com\";
+    s:2:\"cc\";
+    s:0:\"\";
+    s:3:\"bcc\";
+    s:0:\"\";
+    s:15:\"recipient_array\";
+    a:4:{
+        i:0;
+        s:18:\"tonym415@gmail.com\";
+        i:1;
+        s:29:\"alexissimmons041712@gmail.com\";
+        i:2;
+        s:29:\"tonymoses@texasbluesalley.com\";
+        i:3;
+        s:25:\"antonio.moses79@gmail.com\";
+    }
+    s:7:\"subject\";
+    s:6:\"DEMO 2\";
+    s:7:\"message\";
+    s:100:\"Hello {{first_name}}, This is to inform you that your account will renew on {{renew_date}}! Thanks\";
+    s:13:\"plaintext_alt\";
+    s:0:\"\";
+    s:8:\"mailtype\";
+    s:4:\"text\";
+    s:8:\"text_fmt\";
+    s:4:\"none\";
+    s:8:\"wordwrap\";
+    s:1:\"y\";
+    s:11:\"attachments\";
+    a:0:{}
+    }
+}

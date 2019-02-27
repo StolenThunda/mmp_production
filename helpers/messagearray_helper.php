@@ -44,11 +44,11 @@ class MessageArray extends stdClass implements Iterator{
         return $var;
     }
 
-		public function empty(){
-			$this->data = [];
-		}	
+	public function empty(){
+		$this->data = [];
+	}	
 
-		public function __toString(){
-			return json_encode(array(print_r($this->data, True) . PHP_EOL, 'Current Debug Messages'));
-		}
+	public function __toString(){
+		return json_encode(array(print_r($this->data, True) . PHP_EOL, 'Current Debug Messages'));
 	}
+}

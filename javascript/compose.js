@@ -21,7 +21,7 @@ function messageType() {
 
 function countEmails() {
     var email_string = $("#recipient").val();
-    var emails = email_string.split(', ');
+    var emails = email_string.split(',');
     var count = (emails[0] === "") ? 0 : emails.length;
 
     var label = $(".primary_recip > .field-instruct > label");
@@ -38,9 +38,12 @@ function countEmails() {
 function getEmails() {
     var raw = $("#csv_recipient").val();
     var csvObj = validData($.csv.toObjects(raw));
+    console.log(csvObj);
     if (csvObj) {
         $('input[name="csv_object"]').val(csvObj.data_string);
         $("input[name='recipient_count']").val(csvObj.recipient_count);
+        $("input[name='mailKey']").val(csvObj.mailkey);
+        $("input[name='formatted_emails']").val(csvObj.formatted.join(','));
         $('#recipient').val(csvObj.email_list);
         $("#recipient_type").val('recipient').change();
         showPlaceholders(csvObj.headers);
@@ -58,39 +61,52 @@ function validData(data) {
     var key = getMailKey(first_row);
 
     // has an email column?
-    var email_column = first_row.filter(word => isValidEmailAddress(word));
-    if (!key) errs.push("Missing Email Column");
-    if (email_column.length > 0) errs.push("No Email Column found");
+    var invalid_email_column = first_row.filter(word => isValidEmailAddress(word));
+    var email_column = test_row.filter(word => isValidEmailAddress(word));
 
-    // generate email list 
+    // generate email list and generate converted data to obj with tokenized keys  
+    var emails = [];
+    var formatted = [];
+    var tokenized_obj = [];
     if (key) {
-        var emails = [];
-        data.forEach(element => {
-            emails.push(element[key]);
+        data.forEach(row => {
+            emails.push(row[key]);
+            formatted.push(`${row.first_name} ${row.last_name} <${row[key]}>`);
+            var newRow = {};
+            for (var itm in row) {
+                var token_key = `{{${itm}}}`;
+                newRow[token_key] = row[itm];
+            }
+            tokenized_obj.push(newRow);
         });
     }
+
+    if (!key) errs.push("Cannot determine email column");
+    if (invalid_email_column.length > 0) errs.push("Missing Header Row");
+    if (email_column.length > 0) errs.push("No Email Column found");
+
     if (errs.length === 0) {
         return {
-            'mailkey': key,
+            'mailkey': `{{${key}}}`,
             'headers': tokenizeKeys(first_row),
-            'data_string': JSON.stringify(data),
+            'data_string': JSON.stringify(tokenized_obj),
             'data': data,
             'recipient_count': emails.length,
-            'email_list': emails.join(', ')
+            'formatted': formatted,
+            'email_list': emails.join(',')
         };
     } else {
-        var msg = errs.join('<br/>');
-        debugger;
-
-        msg = "<ul class='sidebar'>";
+        var msg = $("<ul />");
         errs.forEach(element => {
-            msg += `<li>${element}</li>`;
+            var itm = $('<li/>', {
+                text: elment,
+            });
+            msg.append(itm);
         });
-        msg += '</ul>';
-        swal({
-            title: 'Invalid Data',
-            'html': msg,
-            'icon': 'error'
+        Swal.fire({
+            'title': 'Invalid Data',
+            'type': 'error',
+            'html': msg
         });
     }
 }
@@ -100,7 +116,7 @@ function getMailKey(data) {
     var keyColumn = ['mail', 'email', 'address'];
     var keys = [];
     keys.push(data.find((k) => {
-        k = k.trim()
+        k = k.trim();
         var isEmail = isValidEmailAddress(k);
         var inArray = $.inArray(k, keyColumn);
         return (inArray >= 0 && !isEmail);
@@ -133,7 +149,7 @@ function showPlaceholders(headers) {
     $('.sidebar').after("<table id='placeholder'><caption>Placeholders</caption></table>");
     headers.forEach(el => {
         var test = $('<button/>', {
-            class: 'placeholder icon-envelope',
+            class: 'btn placeholder',
             text: el,
             click: function() {
                 var plain = $('textarea[name=\'plaintext_alt\']');
@@ -224,16 +240,39 @@ function printTable(file) {
         slide();
         getEmails();
         var html = '';
-        for (var row in data) {
+        var len = data.length - 1;
+        html += '<tr>\r\n';
+        for (var item in data[0]) {
+            html += '<th>' + data[0][item] + '</th>\r\n';
+        }
+        html += '</tr>\r\n';
+        for (let i = 0; i < len; i++) {
+            const element = data[i];
             html += '<tr>\r\n';
-            for (var item in data[row]) {
-                html += '<td>' + data[row][item] + '</td>\r\n';
+            for (item in element) {
+                html += '<td>' + element[item] + '</td>\r\n';
             }
             html += '</tr>\r\n';
         }
         $('#csv_content').html(html);
     };
     reader.onerror = function() {
-        alert('Unable to read ' + file.fileName);
+        Swal.fire('Unable to read ' + file.fileName);
     };
+}
+
+function dumpHiddenVals() {
+    var msg = $("<table/>");
+    $('input[type="hidden"]').each(function() {
+        var val = $(this).val();
+        var val = (val.length > 100) ? val.substring(0, 100) + '...' : val;
+        console.log($(this).attr('name') + ": " + $(this).val());
+        msg.append("<tr><td>" + $(this).attr('name') + "</td><td>" + val + "</td></tr>");
+    });
+    swal.fire({
+        title: 'HIDDEN VALS',
+        type: 'info',
+        html: msg,
+        width: '80%',
+    });
 }

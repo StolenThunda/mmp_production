@@ -4,11 +4,11 @@
             'intro' => array(
             ),
             'email' => array(
-                'links' => array('compose', 'sent')
+                'links' => array('compose', 'sent' )
             ),
-            'services' => array(
-                'links' => array()
-            )
+            // 'services' => array(
+            //     'links' => array()
+            // )
         )
     );
 //EOF
