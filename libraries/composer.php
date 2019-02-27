@@ -30,7 +30,8 @@ class Composer {
 		if ( ! ee()->cp->allowed_group('can_access_comm'))
 		{
 			show_error(lang('unauthorized_access'), 403);
-		}
+		} 
+		ee()->config->load('compose_js');
 	}
 
 	/**
@@ -73,17 +74,17 @@ class Composer {
 			$default['recipient'] = $email->recipient;
 			$default['cc'] = $email->cc;
 			$default['bcc'] = $email->bcc;
-			$default['subject'] = $email->subject;
+			$default['subject'] = str_replace('', '(TEMPLATE) ', $email->subject);
 			$default['message'] = $email->message;
 			$default['plaintext_alt'] = $email->plaintext_alt;
 			$default['mailtype'] = $email->mailtype;
 			$default['wordwrap'] = $email->wordwrap;
-			if ( ! isset($this->member))
-			{
-				$member_groups = $email->getMemberGroups()->pluck('group_id');
-			}
+			// if ( ! isset($this->member))
+			// {
+			// 	$member_groups = $email->getMemberGroups()->pluck('group_id');
+			// }
 		}
-
+		console_message($default, __METHOD__);
 		// Set up member group emailing options
 		if (ee()->cp->allowed_group('can_email_member_groups'))
 		{
@@ -182,13 +183,13 @@ class Composer {
 					'title' => 'recipient_type',
 					'desc' => 'recipient_type_desc',
 					'fields' => array(
-						'recipient_type' => array(
-							'type' => 'html',
-							'content' => form_dropdown('recipient_type', $vars['recipient_types'], $default['recipient_type'] , 'id="recipient_type"')
-						),
 						'dump_vars' => array(
 							'type' => 'html',
 							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
+						)
+						,'recipient_type' => array(
+							'type' => 'html',
+							'content' => form_dropdown('recipient_type', $vars['recipient_types'], $default['recipient_type'] , 'id="recipient_type"')
 						),
 						'csv_object' => array(
 							'type' => 'hidden',
@@ -207,18 +208,10 @@ class Composer {
 				array(
 					'title' => 'primary_recipients',
 					'desc' => 'primary_recipients_desc',
-					'attrs' => array('class' => 'primary_recip'),
 					'fields' => array(
-						'emails' => array(
-							'type' => 'html',
-							'content' => form_input(
-								array(
-									'name' => 'recipient',
-									'id' => 'recipient',
-									'class' => 'required',
-									'value' => $default['recipient']
-								)
-							)
+						'recipient' => array(
+							'type' => 'text',
+							'value' => $default['recipient']
 						)
 					)
 				),
@@ -303,10 +296,17 @@ class Composer {
 		$vars['save_btn_text'] = lang('compose_send_email');
 		$vars['save_btn_text_working'] = lang('compose_sending_email');
 		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email:send')->compile(), $vars['cp_page_title']);
+
+		$internal_js = ee()->config->item('internal_js');
+		foreach ($internal_js as $js){
+			ee()->cp->load_package_js($js);
+		}
+		$external_js = ee()->config->item('external_js');
+		foreach($external_js as $script){
+			ee()->cp->add_to_foot($script);
+		}
+		// ee()->cp->add_to_foot('<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8.2.4/dist/sweetalert2.all.min.js" integrity="sha256-G83CHUL43nu8OZ2zyBVK4hXi1JydCwBZPabp7ufO7Cc=" crossorigin="anonymous"></script>');
 		console_message($vars, __METHOD__);
-		ee()->cp->load_package_js('jquery_csv');
-		ee()->cp->load_package_js('compose');
-		ee()->cp->add_to_foot('<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8.2.4/dist/sweetalert2.all.min.js" integrity="sha256-G83CHUL43nu8OZ2zyBVK4hXi1JydCwBZPabp7ufO7Cc=" crossorigin="anonymous"></script>');
 		return $vars;
 	}
 
@@ -540,6 +540,11 @@ class Composer {
 		$email->save();
 		$id = $email->cache_id;
 
+		// insert data into Mm_cache
+		// set cache_id 
+		// set json content 
+
+
 		// Is Batch Mode set?
 
 		$batch_mode = bool_config_item('email_batchmode');
@@ -671,7 +676,8 @@ class Composer {
 			show_error(lang('cache_data_missing'));
 		}
 
-		$this->compose($email);
+		console_message($email->subject, __METHOD__);
+		return $this->compose($email);
 	}
 
 	/**
@@ -754,16 +760,13 @@ class Composer {
 			if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
-				$found = $this->csv_lookup[$email_address];
-				console_message($found, 'Lookup record');
-				$tmp_message= strtr($email->message, $found);
-
+				$record = $this->csv_lookup[$email_address];
+				$tmp_message = strtr($email->message, $record);
 				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
 
-				// standard 'First Last <email address> format
-				$to = "\"{$found['{{first_name}}']} {$found['{{last_name}}']}\"  <{$found['{{email}}']}>"; 
-				ee()->logger->developer(__METHOD__. '('. $to .') : ' . $tmp_message);
-				console_message($to, 'current email');
+				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
+				// $to = "{$found['{{first_name}}']} {$found['{{last_name}}']}  <{$found['{{email}}']}>"; 
+				$to = $record['{{email}}']; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,

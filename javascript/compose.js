@@ -7,7 +7,7 @@ $(document).ready(function() {
     }
     $("#recipient_type").change(slide);
     $("#csv_recipient").change(getEmails);
-    $("#recipient").change(countEmails);
+    $("input[name=recipient]").change(countEmails);
     $("select[name='mailtype']").change(messageType);
 });
 
@@ -20,7 +20,7 @@ function messageType() {
 }
 
 function countEmails() {
-    var email_string = $("#recipient").val();
+    var email_string = $("input[name=recipient]").val();
     var emails = email_string.split(',');
     var count = (emails[0] === "") ? 0 : emails.length;
 
@@ -44,7 +44,7 @@ function getEmails() {
         $("input[name='recipient_count']").val(csvObj.recipient_count);
         $("input[name='mailKey']").val(csvObj.mailkey);
         $("input[name='formatted_emails']").val(csvObj.formatted.join(','));
-        $('#recipient').val(csvObj.email_list);
+        $('input[name=recipient]').val(csvObj.email_list);
         $("#recipient_type").val('recipient').change();
         showPlaceholders(csvObj.headers);
         countEmails();
@@ -167,7 +167,7 @@ function showPlaceholders(headers) {
 
 function slide() {
     var defaults = {
-        'recipient': '#recipient',
+        'recipient': 'input[name=recipient]',
         'csv_recipient': '#csv_recipient',
         'file_recipient': "input[name='file_recipient']"
     };

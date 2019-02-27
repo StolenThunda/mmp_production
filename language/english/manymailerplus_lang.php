@@ -1,5 +1,4 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
-
 $lang = array(
 	'intro_title' => 'Overview',
 	'intro_heading' => EXT_DISPLAY_NAME.' Overview',
@@ -76,6 +75,8 @@ $lang = array(
 	'file_recipient_desc' => 'Upload csv file',
 	'compose_file_recipient_type' => ($recip_file_type = 'Upload CSV'),
 	'compose_csv_recipient_type' => ($recip_csv_type = 'CSV'),
+	'compose_error' => 'Attention: Email not sent',
+	'compose_error_desc' => 'We were unable to send this Email, please review and fix errors below.',
 	'recipient_type' => 'Recipient Entry Method',
 	'recipient_type_desc' => "Default: Type email <br/>{$recip_csv_type}: Paste contents of CSV File <br/> {$recip_file_type}: Upload local CSV File", 
 	'cc_recipients' => 'CC recipient(s)',

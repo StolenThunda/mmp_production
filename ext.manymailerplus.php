@@ -38,6 +38,7 @@ class ManyMailerPlus_ext {
 	{
 		ee()->load->helper('debug');
 		ee()->load->helper('MessageArray');
+		ee()->load->helper('html');
 		ee()->load->library('composer');
         $this->config = ee()->config->item(EXT_SHORT_NAME.'_settings');
         $this->config = ee()->config->item('manymailerplus_settings');
@@ -180,6 +181,46 @@ class ManyMailerPlus_ext {
 
 			switch ($vars['active'][0]) {
 				case 'intro':
+				//
+				//  TODO: add "Settings" page to control function in extenstion 
+				//
+				// 	$vars['sections'] = array(
+				// 	array(
+				// 		array(
+				// 		'title' => 'site_name',
+				// 		'fields' => array(
+				// 			'site_name' => array(
+				// 			'type' => 'html',
+				// 			'content' => img('./images/recip_types.gif'),
+				// 			)
+				// 		)
+				// 		),
+				// 		array(
+				// 		'title' => 'site_short_name',
+				// 		'desc' => 'site_short_name_desc',
+				// 		'fields' => array(
+				// 			'site_short_name' => array(
+				// 			'type' => 'text',
+				// 			'value' => '',
+				// 			'required' => TRUE
+				// 			)
+				// 		)
+				// 		),
+				// 		array(
+				// 		'title' => 'site_online',
+				// 		'desc' => 'site_online_desc',
+				// 		'fields' => array(
+				// 			'is_system_on' => array(
+				// 			'type' => 'inline_radio',
+				// 			'choices' => array(
+				// 				'y' => 'online',
+				// 				'n' => 'offline'
+				// 			)
+				// 			)
+				// 		)
+				// 		)
+				// 	),
+				// );
 				case 'email':
 					$vars['cp_page_title'] = lang(''.$this->current_service.'_title');
 					$this->dbg_msgs->addMsg("Current Svc: {$this->current_service}");
@@ -188,7 +229,13 @@ class ManyMailerPlus_ext {
 							console_message(array(
 								'in_Composer' => method_exists(new Composer, $this->current_service),
 								'vars' => $vars), "{$this->current_service} is Composer func?");
-							$composer_vars = ee()->composer->{$this->current_service}();
+							if (in_array($this->current_service, array('compose', 'sent', 'send'))){
+								$composer_vars = ee()->composer->{$this->current_service}();
+							} else{
+								$id = ee()->uri->segment(6, 0);
+								$composer_vars = ee()->composer->{$this->current_service}($id);
+								console_message($composer_vars, "Composer Vars");
+							}
 							$vars = array_merge($vars, $composer_vars);
 							console_message($vars, "Merged Vars");
 							$this->_update_sidebar_options($vars);
@@ -1250,6 +1297,9 @@ class ManyMailerPlus_ext {
 		);
 
 		ee()->db->insert('extensions', $data);			
+
+		// create add'l tables
+
 		
 	}	
 	
