@@ -32,6 +32,16 @@ class Composer {
 			show_error(lang('unauthorized_access'), 403);
 		} 
 		ee()->config->load('compose_js');
+
+		$internal_js = ee()->config->item('internal_js');
+		foreach ($internal_js as $js){
+			ee()->cp->load_package_js($js);
+		}
+		$external_js = ee()->config->item('external_js');
+		foreach($external_js as $script){
+			ee()->cp->add_to_foot($script);
+		}
+
 	}
 
 	/**
@@ -296,16 +306,6 @@ class Composer {
 		$vars['save_btn_text'] = lang('compose_send_email');
 		$vars['save_btn_text_working'] = lang('compose_sending_email');
 		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email:send')->compile(), $vars['cp_page_title']);
-
-		$internal_js = ee()->config->item('internal_js');
-		foreach ($internal_js as $js){
-			ee()->cp->load_package_js($js);
-		}
-		$external_js = ee()->config->item('external_js');
-		foreach($external_js as $script){
-			ee()->cp->add_to_foot($script);
-		}
-		// ee()->cp->add_to_foot('<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8.2.4/dist/sweetalert2.all.min.js" integrity="sha256-G83CHUL43nu8OZ2zyBVK4hXi1JydCwBZPabp7ufO7Cc=" crossorigin="anonymous"></script>');
 		console_message($vars, __METHOD__);
 		return $vars;
 	}
@@ -973,7 +973,7 @@ class Composer {
 			->offset($offset)
 			->all();
 		// $emails = $emails->all();
-
+		
 		$vars['emails'] = array();
 		$data = array();
 		foreach ($emails as $email)
@@ -991,6 +991,7 @@ class Composer {
 					'view' => array(
 						'title' => lang('view_email'),
 						'href' => '',
+						'id' => $email->cache_id,
 						'rel' => 'modal-email-' . $email->cache_id,
 						'class' => 'm-link'
 					),
@@ -1048,8 +1049,7 @@ class Composer {
 		$vars['cp_page_title'] = lang('view_email_cache');
 		ee()->javascript->set_global('lang.remove_confirm', lang('view_email_cache') . ': <b>### ' . lang('emails') . '</b>');
 
-		ee()->cp->add_js_script(array( 'file' => array('cp/confirm_remove'),));
-
+		// ee()->cp->add_js_script(array( 'file' => array('cp/confirm_remove'),));
 		$vars['base_url'] = $base_url;
 		return $vars;
 	}

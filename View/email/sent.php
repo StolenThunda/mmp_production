@@ -34,7 +34,10 @@
 						<h1><?=$email->subject?></h1>
 						<div class="txt-wrap">
 							<ul class="checklist mb">
-								<li><b><?=lang('sent')?>:</b> <?=$email->cache_date->format('U')?> <?=lang('to')?> <?=$email->total_sent?> <?=lang('recipients')?></li>
+								<li>
+									<b><?=lang('sent')?>:</b> 
+									<?php echo ee()->localize->human_time($email->cache_date->format('U'))?> 
+									<?=lang('to')?> <?=$email->total_sent?> <?=lang('recipients')?></li>
 							</ul>
 							<?=ee('Security/XSS')->clean($email->message)?>
 						</div>

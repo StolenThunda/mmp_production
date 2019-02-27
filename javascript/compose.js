@@ -204,7 +204,12 @@ function isAPIAvailable() {
 }
 
 function setUI() {
-    //$('select').dropdown();
+    $('a.m-link').bind('click', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        rel = e.target.rel;
+        showEmail(`.${rel}`);
+    });
 }
 
 function handleFileSelect(evt) {
@@ -259,6 +264,13 @@ function printTable(file) {
     reader.onerror = function() {
         Swal.fire('Unable to read ' + file.fileName);
     };
+}
+
+function showEmail(id) {
+    var html = $(id).html();
+    var title = $($.parseHTML(html)).find('h1').text();
+    var info = $($.parseHTML(html)).find('.txt-wrap').html();
+    Swal.fire(title, info, 'info');
 }
 
 function dumpHiddenVals() {

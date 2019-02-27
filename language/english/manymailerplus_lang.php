@@ -79,6 +79,7 @@ $lang = array(
 	'compose_error_desc' => 'We were unable to send this Email, please review and fix errors below.',
 	'recipient_type' => 'Recipient Entry Method',
 	'recipient_type_desc' => "Default: Type email <br/>{$recip_csv_type}: Paste contents of CSV File <br/> {$recip_file_type}: Upload local CSV File", 
+	'recipients' => 'Recipient(s)',
 	'cc_recipients' => 'CC recipient(s)',
 	'cc_recipients_desc' => 'CC Email(s). Separate multiple recipients with a comma.',
 	'bcc_recipients' => 'BCC recipient(s)',
