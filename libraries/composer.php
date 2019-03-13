@@ -9,6 +9,7 @@
  */
 use EllisLab\ExpressionEngine\Controller\Utilities;
 use EllisLab\ExpressionEngine\Library\CP\Table;
+// use	manymailerplus\Model\ as EmailCache;
 use EllisLab\ExpressionEngine\Model\Email\EmailCache;
 use EllisLab\ExpressionEngine\View;
 
@@ -19,6 +20,7 @@ class Composer {
 
 	private $attachments = array();
 	private $csv_lookup = array();
+	private $csv_email_column = "{{email}}";
 
 	/**
 	 * Constructor
@@ -61,7 +63,9 @@ class Composer {
 			'plaintext_alt'	=> '',
 			'mailtype'		=> ee()->config->item('mail_format'),
 			'wordwrap'		=> ee()->config->item('word_wrap'),
-			'recipient_type'=> lang('compose_csv_recipient_type')
+			'recipient_type'=> lang('compose_csv_recipient_type'),
+			'csv_object' 	=> '',
+			'mailKey' 		=> '',
 		);
 
 		$vars['mailtype_options'] = array(
@@ -89,11 +93,10 @@ class Composer {
 			$default['plaintext_alt'] = $email->plaintext_alt;
 			$default['mailtype'] = $email->mailtype;
 			$default['wordwrap'] = $email->wordwrap;
-			// if ( ! isset($this->member))
-			// {
-			// 	$member_groups = $email->getMemberGroups()->pluck('group_id');
-			// }
+			$default['csv_object'] = $email->wordwrap;
+			$default['mailKey'] = $email->mailKey;
 		}
+
 		console_message($default, __METHOD__);
 		// Set up member group emailing options
 		if (ee()->cp->allowed_group('can_email_member_groups'))
@@ -116,18 +119,6 @@ class Composer {
 				}
 			}
 		}
-
-		$csvHTML = array(
-			form_textarea(
-				array(
-					'name' => 'csv_recipient',
-					'id' => 'csv_recipient',
-					'rows' => '10',
-					'class' => 'required',
-				)
-			),
-			form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
-		);
 
 		if ($default['mailtype'] != 'html')
 		{
@@ -194,7 +185,7 @@ class Composer {
 					'desc' => 'recipient_type_desc',
 					'fields' => array(
 						'dump_vars' => array(
-							'type' => 'html',
+							'type' => 'hidden',
 							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
 						)
 						,'recipient_type' => array(
@@ -203,13 +194,9 @@ class Composer {
 						),
 						'csv_object' => array(
 							'type' => 'hidden',
-							'value' => ''
+							'value' => (isset($default['csv_object'])) ? $default['csv_object'] : ''
 						),
 						'mailKey' => array(
-							'type' => 'hidden',
-							'value' => ''
-                        ),
-                        'formatted_emails' => array(
 							'type' => 'hidden',
 							'value' => ''
                         )
@@ -231,8 +218,20 @@ class Composer {
 					'fields' => array(
 						'csv_recipient' => array(
 							'type' => 'html',
-							'content' => implode('<br />', $csvHTML)
+							'content' => implode('<br />', 
+								array(
+									form_textarea(
+										array(
+											'name' => 'csv_recipient',
+											'id' => 'csv_recipient',
+											'rows' => '10',
+											'class' => 'required',
+										)
+									),
+									form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
+								)
 							)
+						)
 					)
 				),
 				array(
@@ -332,7 +331,8 @@ class Composer {
 			'from_email' => ee()->session->userdata('email')
 		);
 
-		$email = ee('Model')->make('EmailCache', $cache_data);
+		// $email = ee('Model')->get(EXT_SHORT_NAME.':', $cache_data);
+		$email = ee('Model')->get('EmailCache', $cache_data);
 		$email->removeMemberGroups();
 		$this->compose($email);
 	}
@@ -361,7 +361,6 @@ class Composer {
 			'cc',
 			'bcc',
 			'csv_object',
-			'formatted_emails',
 			'mailKey'
 		);
 
@@ -380,11 +379,12 @@ class Composer {
 			}
 		}
 		
+		if (isset($mailKey)) $this->csv_email_column = $mailKey;
 		// create lookup array for easy email lookup
-		if (isset($csv_object) AND $csv_object !== ""){
+		if (isset($csv_object) AND $csv_object !== "" AND isset($mailKey)){
 			$rows =  json_decode($csv_object, TRUE);
 			foreach ($rows as $row){
-				$this->csv_lookup[$row[$mailKey]] = $row;
+				$this->csv_lookup[trim($row[$mailKey])] = $row;
 			}
 		}
 
@@ -465,22 +465,13 @@ class Composer {
 			'total_sent'		=> 0,
 			'plaintext_alt'		=> $plaintext_alt,
 			'attachments'		=> $this->attachments,
+			// 'csv_object'		=> json_decode($csv_object, TRUE),
+			// 'mailKey'			=> $mailKey,
 		);
-
+		console_message($cache_data, __METHOD__);
+		// $email = ee('Model')->get(EXT_SHORT_NAME.':EmailCachePlus', $cache_data);
 		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
-
-		// //  Send a single email
-		// if (count($groups) == 0)
-		// {
-		// 	console_message("Sending one", __METHOD__);
-		// 	$debug_msg = $this->deliverOneEmail($email, $recipient);
-		// 	console_message($debug_msg, __METHOD__);
-		// 	ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
-		// 	ee()->functions->redirect(
-		// 		ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
-		// 	);
-		// }
 
 		// Get member group emails
 		$member_groups = ee('Model')->get('MemberGroup', $groups)
@@ -539,11 +530,6 @@ class Composer {
 		$email->setMemberGroups(ee('Model')->get('MemberGroup', $groups)->all());
 		$email->save();
 		$id = $email->cache_id;
-
-		// insert data into Mm_cache
-		// set cache_id 
-		// set json content 
-
 
 		// Is Batch Mode set?
 
@@ -613,7 +599,7 @@ class Composer {
 			show_error(lang('problem_with_id'));
 		}
 
-		$email = ee('Model')->get('EmailCache', $id)->first();
+		$email =ee('Model')->get(EXT_SHORT_NAME.':', $id)->first();
 
 		if (is_null($email))
 		{
@@ -757,6 +743,7 @@ class Composer {
 			$email_address = array_shift($recipient_array);
 
 			if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
+				console_message($this->csv_lookup, __METHOD__);
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
@@ -765,7 +752,7 @@ class Composer {
 
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
 				// $to = "{$found['{{first_name}}']} {$found['{{last_name}}']}  <{$found['{{email}}']}>"; 
-				$to = $record['{{email}}']; 
+				$to = $record[$this->csv_email_column]; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -785,8 +772,10 @@ class Composer {
 					'attachments'		=> $this->attachments,
 				);
 
+				// $singleEmail = ee('Model')->get(EXT_SHORT_NAME.':', $cache_data);
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
+				console_message($singleEmail, __METHOD__);
 				if ( ! $this->deliverEmail($singleEmail, $to))
 				{
 					$singleEmail->delete();
@@ -859,7 +848,7 @@ class Composer {
 	 * Formats the message of an email based on the text format type
 	 *
 	 * @param	obj	$email	An EmailCache object
-	 * @return	string		The formatted message
+	 * @return	string		The  message
 	 */
 	private function formatMessage(EmailCache $email)
 	{
@@ -942,7 +931,8 @@ class Composer {
 
 		$count = 0;
 
-		$emails = ee('Model')->get('EmailCache');
+		// $emails =ee('Model')->get(EXT_SHORT_NAME.':');
+		$emails =ee('Model')->get('EmailCache');
 
 		$search = $table->search;
 		if ( ! empty($search))
@@ -960,6 +950,7 @@ class Composer {
 
 		$count = $emails->count();
 
+		console_message($count, __METHOD__);
 		$sort_map = array(
 			'date' => 'cache_date',
 			'subject' => 'subject',

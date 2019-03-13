@@ -77,6 +77,7 @@ $lang = array(
 	'compose_csv_recipient_type' => ($recip_csv_type = 'CSV'),
 	'compose_error' => 'Attention: Email not sent',
 	'compose_error_desc' => 'We were unable to send this Email, please review and fix errors below.',
+	'emails_deleted' => 'Emails Removed',
 	'recipient_type' => 'Recipient Entry Method',
 	'recipient_type_desc' => "Default: Type email <br/>{$recip_csv_type}: Paste contents of CSV File <br/> {$recip_file_type}: Upload local CSV File", 
 	'recipients' => 'Recipient(s)',

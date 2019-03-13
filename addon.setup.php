@@ -20,6 +20,10 @@ return array(
       'docs_url' => './README.md',
       'name' => EXT_NAME,
       'namespace' => EXT_SHORT_NAME,
-      'settings_exist' => true,
-      'version' => EXT_VERSION
+      'settings_exist' => TRUE,
+      'version' => EXT_VERSION,
+
+      // 'models' => array(
+      //       'EmailCachePlus' => 'Model\EmailCachePlus'
+      // )
 );

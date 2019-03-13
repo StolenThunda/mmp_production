@@ -35,110 +35,154 @@ function countEmails() {
     label.text(origText + countText);
 }
 
-function getEmails() {
-    var raw = $("#csv_recipient").val();
-    var csvObj = validData($.csv.toObjects(raw));
-    console.log(csvObj);
+function getEmails(data) {
+    var csvObj;
+    if (typeof data === 'undefined') {
+        data = $("#csv_recipient").val();
+    }
+    csvObj = validate_csv(data);
     if (csvObj) {
         $('input[name="csv_object"]').val(csvObj.data_string);
         $("input[name='recipient_count']").val(csvObj.recipient_count);
         $("input[name='mailKey']").val(csvObj.mailkey);
-        $("input[name='formatted_emails']").val(csvObj.formatted.join(','));
         $('input[name=recipient]').val(csvObj.email_list);
         $("#recipient_type").val('recipient').change();
+        console.log(csvObj.rawdata);
+        console.log(csvObj.data);
         showPlaceholders(csvObj.headers);
         countEmails();
         slide();
     }
 }
 
-function validData(data) {
+function validate_csv(data) {
     var errs = [];
-    var first_row = Object.keys(data[0]); // should be column header
-    var test_row = Object.keys(data[1]); // should begin data
-
-    // has an email header column?
-    var key = getMailKey(first_row);
-
+    var errDetail = [];
+    var header_valid, email_column;
+    var header_row = Object.keys(data[0]); // should be column header
+    var first_row_values = Object.values(data[0]); // should begin data
     // has an email column?
-    var invalid_email_column = first_row.filter(word => isValidEmailAddress(word));
-    var email_column = test_row.filter(word => isValidEmailAddress(word));
+    var has_email_column = (first_row_values.filter(word => isValidEmailAddress(word)).length > 0);
+
+    // validate required columns
+    var required_columns = validateRequiredKeys(header_row);
+    if (required_columns.errors.length > 0) errDetail = errDetail.concat(required_columns.errors);
+    header_valid = required_columns.validHeader;
+    email_column = required_columns.email_column;
 
     // generate email list and generate converted data to obj with tokenized keys  
     var emails = [];
-    var formatted = [];
     var tokenized_obj = [];
-    if (key) {
+    if (email_column) {
         data.forEach(row => {
-            emails.push(row[key]);
-            formatted.push(`${row.first_name} ${row.last_name} <${row[key]}>`);
             var newRow = {};
+            var token_key, current_csv;
+            var current_email = row[email_column.original];
+            emails.push(current_email.trim());
             for (var itm in row) {
-                var token_key = `{{${itm}}}`;
+                token_key = required_columns.headerKeyMap[itm];
+                current_csv = $('#csv_recipient').val().split(/\n+/g);
+                current_csv[0] = current_csv[0].replace(itm, token_key);
+                let new_csv = current_csv.join('\n');
+                $('#csv_recipient').val(new_csv);
                 newRow[token_key] = row[itm];
             }
-            tokenized_obj.push(newRow);
+            tokenized_obj.unshift(newRow);
         });
     }
 
-    if (!key) errs.push("Cannot determine email column");
-    if (invalid_email_column.length > 0) errs.push("Missing Header Row");
-    if (email_column.length > 0) errs.push("No Email Column found");
-
+    if (!email_column) errs.unshift("Cannot determine email column");
+    if (!header_valid) errs.unshift("Invalid Header Row");
+    if (has_email_column && !header_valid) {
+        errs.unshift('Email column has invalid header');
+    } else if (!has_email_column) {
+        errs.unshift("No Email Column found");
+    }
+    if (!required_columns) errs.unshift("Required Columns: email, first_name, last_name");
     if (errs.length === 0) {
         return {
-            'mailkey': `{{${key}}}`,
-            'headers': tokenizeKeys(first_row),
+            'mailkey': required_columns.email_column.val,
+            'headers': Object.values(required_columns.headerKeyMap),
             'data_string': JSON.stringify(tokenized_obj),
-            'data': data,
+            'data': tokenized_obj,
+            'rawdata': data,
             'recipient_count': emails.length,
-            'formatted': formatted,
+            'validated_data': required_columns,
             'email_list': emails.join(',')
         };
     } else {
-        var msg = $("<ul />");
-        errs.forEach(element => {
-            var itm = $('<li/>', {
-                text: elment,
-            });
-            msg.append(itm);
-        });
-        Swal.fire({
-            'title': 'Invalid Data',
-            'type': 'error',
-            'html': msg
-        });
+        displayCSVErrors(errs, errDetail);
     }
 }
 
-function getMailKey(data) {
-    var retVal = false;
-    var keyColumn = ['mail', 'email', 'address'];
-    var keys = [];
-    keys.push(data.find((k) => {
-        k = k.trim();
-        var isEmail = isValidEmailAddress(k);
-        var inArray = $.inArray(k, keyColumn);
-        return (inArray >= 0 && !isEmail);
-    }));
-    return (typeof keys[0] === 'undefined') ? retVal : keys[0];
+function intersection(d, regX) {
+    // var dataArray = d.map(val => val.toLowerCase().trim());
+    var dataArray = d;
+    var foundColumn = [];
+    dataArray.forEach(csvColumn => {
+        var testColumn = csvColumn.toLowerCase().trim();
+        if (regX.test(testColumn)) {
+            foundColumn.push({
+                original: csvColumn.trim(),
+                val: tokenizeKey(testColumn)
+            });
+        }
+    });
+    return foundColumn;
+}
+
+function validateRequiredKeys(data) {
+    var validHeaders = {
+        email_column: ['mail', 'email', 'address', 'e-mail'],
+        first: ['first', 'given', 'forename'],
+        last: ['last', 'surname']
+    };
+    var regexify = (arr) => {
+        return new RegExp(arr.join("|"), "i");
+    };
+    var header_has_no_email_data = (data.filter(word => isValidEmailAddress(word)).length === 0);
+    var email_column = intersection(data, regexify(validHeaders.email_column));
+    var first = intersection(data, regexify(validHeaders.first));
+    var last = intersection(data, regexify(validHeaders.last));
+    var reqKeys = {
+        'email_column': email_column.length > 0 ? email_column[0] : false,
+        'first': first.length > 0 ? first[0] : "",
+        'last': last.length > 0 ? last[0] : "",
+        'headerKeyMap': (header_has_no_email_data) ? genKeyMap(data) : data,
+        'errors': []
+    };
+    var invalidColumns = Object.keys(reqKeys).filter(k => {
+        var isNotSet = (reqKeys[k] === "" || reqKeys[k] === false);
+        if (isNotSet)
+            reqKeys.errors.push(`Acceptable Values for ${k}: ${validHeaders[k]}`);
+    });
+    reqKeys.validHeader = ((invalidColumns.length === 0) && header_has_no_email_data);
+    return reqKeys;
+}
+
+function genKeyMap(data) {
+    var obj = {};
+    Object.values(data).forEach(key => {
+        obj[key] = tokenizeKey(key);
+    });
+    return obj;
 }
 
 function isValidEmailAddress(emailAddress) {
     var pattern = /^([a-z\d!#$%&'*+\-\/=?^_`{|}~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+(\.[a-z\d!#$%&'*+\-\/=?^_`{|}~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+)*|"((([ \t]*\r\n)?[ \t]+)?([\x01-\x08\x0b\x0c\x0e-\x1f\x7f\x21\x23-\x5b\x5d-\x7e\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|\\[\x01-\x09\x0b\x0c\x0d-\x7f\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]))*(([ \t]*\r\n)?[ \t]+)?")@(([a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|[a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF][a-z\d\-._~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]*[a-z\d\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])\.)+([a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]|[a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF][a-z\d\-._~\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]*[a-z\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])\.?$/i;
-    return pattern.test(emailAddress);
+    return pattern.test(emailAddress.trim());
 }
 
 function tokenizeKeys(data) {
     var newData = [];
     data.forEach(key => {
-        var newRow = {};
-        var lowerKey = key.toLowerCase();
-        var newKey = lowerKey.replace(' ', '_');
-        newRow = "{{" + newKey + "}}";
-        newData.push(newRow);
+        newData.push(tokenizeKey(key));
     });
     return newData;
+}
+
+function tokenizeKey(key) {
+    return "{{" + key.trim().toLowerCase().replace(' ', '_') + "}}";
 }
 
 function showPlaceholders(headers) {
@@ -161,6 +205,33 @@ function showPlaceholders(headers) {
         }).wrap('<tr><td align="center"></td></tr>').closest('tr');
 
         $("#placeholder").append(test);
+    });
+
+}
+
+function displayCSVErrors(errs, errDetail) {
+    var title = "";
+    var msg = $("<ul style='color:red' />");
+    var detail = $("<ul style='white-space: pre-wrap; color:red' />");
+    errs.forEach(element => {
+        title += element + "<br />";
+        var itm = $('<li />', {
+            text: element,
+        });
+        msg.append(itm);
+    });
+    errDetail.forEach(element => {
+        var dt = $("<dt/>", {
+            text: element
+        });
+        detail.append(dt);
+        msg.append(detail);
+    });
+    $('#list').prepend(msg);
+    Swal.fire({
+        'title': title,
+        'type': 'error',
+        'html': detail
     });
 
 }
@@ -212,58 +283,68 @@ function setUI() {
     });
 }
 
+function parseFile(file) {
+    Papa.parse(file, {
+        header: true,
+        complete: (results, file) => {
+            // read the file metadata
+            var output = '';
+            output += '<span style="font-weight:bold;">' + escape(file.name) + '</span><br />\n';
+            output += ' - FileType: ' + (file.type || 'n/a') + '<br />\n';
+            output += ' - FileSize: ' + file.size + ' bytes<br />\n';
+            output += ' - LastModified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
+
+            // post the results
+            $('#list').append(output);
+
+            printTable(results.data);
+
+            var reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = function(event) {
+                var csv = event.target.result;
+                $("#csv_recipient").val(csv);
+                $("#recipient").selectedIndex = 0;
+                slide();
+                getEmails(results.data);
+            };
+            reader.onerror = function() {
+                Swal.fire('Unable to read ' + file.fileName);
+            };
+            console.log("Parsing Complete:", results, file);
+        }
+    });
+}
+
 function handleFileSelect(evt) {
     // clear prev results
     $("#list").html("");
     $("#csv_content").html("");
 
-    var files = evt.target.files; // FileList object
-    var file = files[0];
-
-    // read the file metadata
-    var output = '';
-    output += '<span style="font-weight:bold;">' + escape(file.name) + '</span><br />\n';
-    output += ' - FileType: ' + (file.type || 'n/a') + '<br />\n';
-    output += ' - FileSize: ' + file.size + ' bytes<br />\n';
-    output += ' - LastModified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
-
-    // read the file contents
-    printTable(file);
-
-    // post the results
-    $('#list').append(output);
+    parseFile(evt.target.files[0]);
 }
 
-function printTable(file) {
-    var reader = new FileReader();
-    reader.readAsText(file);
-    reader.onload = function(event) {
-        var csv = event.target.result;
-        var data = $.csv.toArrays(csv);
-        $("#csv_recipient").val(csv);
-        $("#recipient").selectedIndex = 0;
-        slide();
-        getEmails();
-        var html = '';
-        var len = data.length - 1;
-        html += '<tr>\r\n';
-        for (var item in data[0]) {
-            html += '<th>' + data[0][item] + '</th>\r\n';
-        }
-        html += '</tr>\r\n';
-        for (let i = 0; i < len; i++) {
-            const element = data[i];
-            html += '<tr>\r\n';
-            for (item in element) {
-                html += '<td>' + element[item] + '</td>\r\n';
-            }
-            html += '</tr>\r\n';
-        }
-        $('#csv_content').html(html);
-    };
-    reader.onerror = function() {
-        Swal.fire('Unable to read ' + file.fileName);
-    };
+function printTable(data) {
+    var header = data.shift();
+    var tr = $('<tr/>');
+    Object.keys(header).forEach(itm => {
+        var th = $('<th>')
+            .addClass('csv_table')
+            .text(itm);
+        tr.append(th);
+    });
+    $('#csv_content').append(tr);
+
+
+    data.forEach(record => {
+        var tr = $('<tr/>');
+        Object.values(record).forEach(val => {
+            var td = $('<td>')
+                .text(val);
+            tr.append(td);
+        });
+        $('#csv_content').append(tr);
+    });
 }
 
 function showEmail(id) {

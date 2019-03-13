@@ -7,9 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 ## ChangeLog
 
 
-## [0.1.3] - 2019-02-27 ***`committed (516df4) 3 changed files`***
+## [0.1.3] - 2019-02-27 ***`committed (9516df4) 3 changed files`***
 
-- Updates to documentation
+Updates to README and CHANGELOG
 
 ## [0.1.3] - 2019-02-27 ***`committed (260e3bc8) 8 changed files`***
 
