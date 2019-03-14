@@ -325,7 +325,8 @@ function handleFileSelect(evt) {
 }
 
 function printTable(data) {
-    var header = data.shift();
+    var dataCopy = data.concat();
+    var header = dataCopy.shift();
     var tr = $('<tr/>');
     Object.keys(header).forEach(itm => {
         var th = $('<th>')

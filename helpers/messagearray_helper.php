@@ -44,7 +44,7 @@ class MessageArray extends stdClass implements Iterator{
         return $var;
     }
 
-	public function empty(){
+	public function emptyData(){
 		$this->data = [];
 	}	
 
