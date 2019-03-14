@@ -1,4 +1,23 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+$email_detail = EXT_NAME . '\'s '; 
+$email_detail .=<<<HERE
+Composer Is just like the built in "Communicate" utility with one enhancement. It provides options for: <blockquote>
+	<ol>
+		<li>Pasting the contents of a csv file</li>
+		<li>Upload a csv file to be scanned</li>
+	</ol>
+</blockquote>
+<h3>Required Columns: </h3>
+<dl>
+	<dt>An Email Column:</dt>
+	<dd>column title is some form of the following string(email, mail, e-mail, address)</dd>
+	<dt>An First Name Column:</dt><dd>column title is some form of the following string(first, given, forename)</dd>
+	<dt>An Last Name Column:</dt><dd>column title is some form of the following string(last, surname)</dd>
+</dl>
+<p>The rest of the column headings will be parsed and provided as "tokenized" placeholders after: pasting/uploading file</p>', 
+
+
+HERE;
 $lang = array(
 	'intro_title' => 'Overview',
 	'intro_heading' => EXT_DISPLAY_NAME.' Overview',
@@ -49,9 +68,9 @@ $lang = array(
 	'could_not_deliver' => EXT_SHORT_NAME.' tried to deliver your email with %s but the service failed.',
 	'email_heading' => 'Email Functions',
 	'email_title' => 'Email Functions',
-	'email_text' => EXT_NAME . ' provides options for: <p><ul><li>cPorchetta capicola pork, leberkas swine burgdoggen pancetta flank. Doner rump cow turducken flank. Leberkas frankfurter capicola tenderloin pork belly sirloin porchetta drumstick chuck venison turkey andouille pastrami ground round pancetta. Kevin tongue short ribs corned beef frankfurter spare ribs ball tip ribeye shankle rump. Buffalo jerky pork chop pastrami frankfurter alcatra, landjaeger ham hock cupim strip steak kielbasa beef ribs. Swine buffalo tri-tip pork belly, picanha ribeye pork chop bresaola strip steak tenderloin filet mignon ball tip spare ribs porchetta shankle.</li></ul>', 
+	'email_text' => $email_detail,
 	'email_title' => 'Email Functions',
-	'compose_title' => 'Email Functions',
+	'compose_title' => EXT_NAME.'\'s Composer',
 	'compose_detail' => EXT_NAME . ' provides a few methods for adding recipents: default, csv pasting, csv import',
 	'compose_heading' => 'Compose Email ',
 	'compose_desc' => EXT_NAME.' should be familiar. It is the same as the default ExpressionEngine "Communicate"',
@@ -77,7 +96,8 @@ $lang = array(
 	'compose_csv_recipient_type' => ($recip_csv_type = 'CSV'),
 	'compose_error' => 'Attention: Email not sent',
 	'compose_error_desc' => 'We were unable to send this Email, please review and fix errors below.',
-	'emails_deleted' => 'Emails Removed',
+	'create_new_email' => 'Create New Email?',
+	'emails_removed' => 'Emails Removed',
 	'recipient_type' => 'Recipient Entry Method',
 	'recipient_type_desc' => "Default: Type email <br/>{$recip_csv_type}: Paste contents of CSV File <br/> {$recip_file_type}: Upload local CSV File", 
 	'recipients' => 'Recipient(s)',
