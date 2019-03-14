@@ -61,7 +61,7 @@ class Composer {
 			'subject' 		=> '',
 			'message'		=> '',
 			'plaintext_alt'	=> '',
-			'mailtype'		=> ee()->config->item('mail_format'),
+			'mailtype'		=> 'markdown',
 			'wordwrap'		=> ee()->config->item('word_wrap'),
 			'recipient_type'=> lang('compose_csv_recipient_type'),
 			'csv_object' 	=> '',
