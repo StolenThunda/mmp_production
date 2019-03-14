@@ -11,19 +11,25 @@ The email for is pretty much the same as the native 'Communicate' utility with a
 
 Move the 'manymailerplus' folder to the *./system/user/addons* directory
 
-### Features
+### Usage
 
 #### Default entry method
 
 Default refers to typing in the 'Primary Recipients' textbox
 
+![Method of Entry](./images/recip_method.png)
+
 #### CSV entry method
 
 This method accepts a pasted CSV file.
 
+![CSV Paste](./images/recip2.png)
+
 #### CSV Upload method
 
 Enables uploads of local file
+
+![CSV Paste](./images/recip3.png)
 
 ### Required Columns
 
