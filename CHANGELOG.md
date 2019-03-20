@@ -6,10 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ## ChangeLog
 
+## [0.1.5] - 2019-03-14
 
-## [0.1.3] - 2019-02-27 ***`committed (516df4) 3 changed files`***
+- Beta release
 
-- Updates to documentation
+  - Current Release has the ability to:
+
+    - send emails
+    - view sent mail
+    - separate template/actual emails in log
+
+
+## [0.1.3] - 2019-02-27 ***`committed (9516df4) 3 changed files`***
+
+Updates to README and CHANGELOG
 
 ## [0.1.3] - 2019-02-27 ***`committed (260e3bc8) 8 changed files`***
 
