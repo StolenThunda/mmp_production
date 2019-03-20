@@ -16,7 +16,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
     - view sent mail
     - separate template/actual emails in log
 
-
 ## [0.1.3] - 2019-02-27 ***`committed (9516df4) 3 changed files`***
 
 Updates to README and CHANGELOG
@@ -33,12 +32,8 @@ Updates to README and CHANGELOG
 
 ## [0.1.21] - 2019-02-26 ***`committed (2d88c9a) 4 changed files`***
 
-### Milestones
-
 - include external js files for better ui
 - hijacked default "View Email" modal
-
-### Fixes
 
 - human readable time in email modal
 
@@ -121,8 +116,6 @@ Figure out why sending email crashes had to comment out following code from comp
 ---
 
 ## [v0.1.0] - 2019-02-20 ***`committed (5b537c7) 18 changed files`***
-
-### Milestones
 
 - [x] emails successfully
 - [x] upload csv

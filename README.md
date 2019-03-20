@@ -1,4 +1,3 @@
-
 # ManyMailerPlus
 
 ## Welcome to ManyMailerPlus

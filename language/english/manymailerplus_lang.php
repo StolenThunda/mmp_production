@@ -14,7 +14,7 @@ Composer Is just like the built in "Communicate" utility with one enhancement. I
 	<dt>An First Name Column:</dt><dd>column title is some form of the following string(first, given, forename)</dd>
 	<dt>An Last Name Column:</dt><dd>column title is some form of the following string(last, surname)</dd>
 </dl>
-<p>The rest of the column headings will be parsed and provided as "tokenized" placeholders after: pasting/uploading file</p>', 
+<p>The rest of the column headings will be parsed and provided as "tokenized" placeholders after: pasting/uploading file</p> 
 
 
 HERE;
@@ -99,8 +99,6 @@ $lang = array(
 	'create_new_email' => 'Create New Email?',
 	'send_as' => 'Send As: ',
 	'word_wrap' => 'Word Wrap',
-	'plaintext_alt' => 'Alternate content for your HTML Email, will be delivered in Plain Text, when an Email application cannot render HTML.',
-	'plaintext_body' => 'Plain Text Body',
 	'emails_removed' => 'Emails Removed',
 	'recipient_type' => 'Recipient Entry Method',
 	'recipient_type_desc' => "Default: Type email <br/>{$recip_csv_type}: Paste contents of CSV File <br/> {$recip_file_type}: Upload local CSV File", 

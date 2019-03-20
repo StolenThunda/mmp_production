@@ -281,8 +281,6 @@ function setUI() {
         rel = e.target.rel;
         showEmail(`.${rel}`);
     });
-
-    $('table').dynatable();
 }
 
 function parseFile(file) {
