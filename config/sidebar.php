@@ -1,7 +1,7 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
     return $config = array( 
         'options' => array(
-            'intro' => array(
+            'index' => array(
             ),
             'email' => array(
                 'links' => array('compose', 'sent' )

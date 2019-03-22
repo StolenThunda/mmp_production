@@ -2,7 +2,7 @@
     /**
      *      To use in EE native code drop the following in the code: 
 	 *		require_once(PATH_THIRD.'/manymailerplus/helpers/debug_helper.php');
-	 *		console_message("stuff_you_wanna_investigate", "title_for_stuff"(optional), HALT_EXECUTION(boo));
+	 *		console_message("stuff_you_wanna_investigate", "title_for_stuff"(optional), HALT_EXECUTION(bool): defaults->FALSE );
      */
     if (! function_exists('console_message')){
         error_reporting(E_ALL);
@@ -164,7 +164,16 @@
             $value = ob_get_contents();
             if($exit) exit();
         }
-        
+        function lastClass($bt = array(), $offset = 0) {
+            if (count($bt) < 1) return "";
+            $obj = $bt[$offset]; 
+            if (isset($obj['class'])){
+                return $obj['class'];
+            }else{
+                lastClass($bt, $offset + 1);
+            }
+        }
+
         function _consoleString($valueObj, $title = null, $exit = false){
             /*
             * set color tone **/ 
@@ -191,10 +200,11 @@
             }
             $bt = debug_backtrace();
             $bt_obj = $bt[BT_OFFSET + $unknown_error_offset];
-            $prev_bt_obj = $bt[BT_OFFSET + $unknown_error_offset + 1];
+            // $prev_bt_obj = $bt[BT_OFFSET + $unknown_error_offset + 1];
             $caller = json_encode(array_slice($bt, BT_OFFSET + $unknown_error_offset), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK);
             $caller_file = (isset($bt_obj['file']) ? $bt_obj['file'] : "");
-            $caller_class = (isset($bt_obj['class'])) ? $bt_obj['class'] : isset($prev_bt_obj['class']) ? $prev_bt_obj['class'] : "";
+            // $caller_class = (isset($bt_obj['class'])) ? $bt_obj['class'] : isset($prev_bt_obj['class']) ? $prev_bt_obj['class'] : "";
+            $caller_class = (isset($bt_obj['class'])) ? $bt_obj['class'] : lastClass($bt, BT_OFFSET + $unknown_error_offset + 1);
             $caller_function =(isset($bt_obj['class'])) ? $bt_obj['function'] : "{$prev_bt_obj['function']}->{$bt_obj['function']}";
             $caller_line = isset($bt[BT_LINE_OFFSET + $unknown_error_offset]['line']) ? $bt[BT_LINE_OFFSET + $unknown_error_offset]['line'] : $line_num;
             

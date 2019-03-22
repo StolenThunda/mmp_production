@@ -1,26 +1,17 @@
-<?php
-/**
- * This source file is part of the open source project
- * ExpressionEngine (https://expressionengine.com)
- *
- * @link      https://expressionengine.com/
- * @copyright Copyright (c) 2003-2018, EllisLab, Inc. (https://ellislab.com)
- * @license   https://expressionengine.com/license Licensed under Apache License, Version 2.0
- */
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
 use EllisLab\ExpressionEngine\Controller\Utilities;
 use EllisLab\ExpressionEngine\Library\CP\Table;
 // use	manymailerplus\Model\ as EmailCache;
 use EllisLab\ExpressionEngine\Model\Email\EmailCache;
 use EllisLab\ExpressionEngine\View;
 
-/**
- * Copy of Communicate Controller
- */
-class Composer {
+class Manymailerplus_mcp 
+    {
 
+	private $version = EXT_VERSION;
 	private $attachments = array();
 	private $csv_lookup = array();
-	private $csv_email_column = "{{email}}";
 
 	/**
 	 * Constructor
@@ -43,7 +34,51 @@ class Composer {
 		foreach($external_js as $script){
 			ee()->cp->add_to_foot($script);
 		}
+		ee()->load->helper('debug');
+		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
+		if (!$this->sidebar_loaded)
+		{
+			//render page to show errors
+			$vars = array(
+				'base_url' => ee('CP/URL',EXT_SETTINGS_PATH),
+				'cp_page_title' => lang(EXT_SHORT_NAME),
+				'save_btn_text' => 'btn_save_settings',
+				'sections' 	=> array(),
+				'save_btn_text_working' => 'btn_saving',
+			);
+			return ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars);
+		}else{
+			$this->sidebar_options = ee()->config->item('options', 'sidebar');
+			$this->sidebar = ee('CP/Sidebar')->make();
+				foreach(array_keys($this->sidebar_options) as $category){
+					$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
+					// if($category == $vars['active'][0] AND isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
+					if(isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
+						$list_items = $left_nav->addBasicList();	
+						foreach ($this->sidebar_options[$category]['links'] as $link_text) {
+							$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category.'/'.$link_text));
+						}
+					}
+				}
+		}
+	}
 
+	public static function index(){
+		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/'.__FUNCTION__);
+		$vars['cp_page_title'] = lang(__FUNCTION__. '_title');
+		$vars['save_btn_text'] = "";
+		$vars['save_btn_text_working'] = "";
+		$vars['current_action'] = __FUNCTION__;
+		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile();
+		$vars['sections'] = array();
+		console_message($vars, __METHOD__);
+		return  array(
+				'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+				'breadcrumb' => array(
+					$vars['breadcrumb']=> EXT_NAME
+				),
+				'heading' => $vars['cp_page_title']
+			);
 	}
 
 	/**
@@ -61,11 +96,9 @@ class Composer {
 			'subject' 		=> '',
 			'message'		=> '',
 			'plaintext_alt'	=> '',
-			'mailtype'		=> 'markdown',
+			'mailtype'		=> ee()->config->item('mail_format'),
 			'wordwrap'		=> ee()->config->item('word_wrap'),
-			'recipient_type'=> lang('compose_csv_recipient_type'),
-			'csv_object' 	=> '',
-			'mailKey' 		=> '',
+			'recipient_type'=> lang('compose_csv_recipient_type')
 		);
 
 		$vars['mailtype_options'] = array(
@@ -93,11 +126,7 @@ class Composer {
 			$default['plaintext_alt'] = $email->plaintext_alt;
 			$default['mailtype'] = $email->mailtype;
 			$default['wordwrap'] = $email->wordwrap;
-			$default['csv_object'] = $email->wordwrap;
-			$default['mailKey'] = $email->mailKey;
 		}
-
-		console_message($default, __METHOD__);
 		// Set up member group emailing options
 		if (ee()->cp->allowed_group('can_email_member_groups'))
 		{
@@ -119,6 +148,18 @@ class Composer {
 				}
 			}
 		}
+
+		$csvHTML = array(
+			form_textarea(
+				array(
+					'name' => 'csv_recipient',
+					'id' => 'csv_recipient',
+					'rows' => '10',
+					'class' => 'required',
+				)
+			),
+			form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
+		);
 
 		if ($default['mailtype'] != 'html')
 		{
@@ -185,7 +226,7 @@ class Composer {
 					'desc' => 'recipient_type_desc',
 					'fields' => array(
 						'dump_vars' => array(
-							'type' => 'hidden',
+							'type' => 'html',
 							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
 						)
 						,'recipient_type' => array(
@@ -194,9 +235,13 @@ class Composer {
 						),
 						'csv_object' => array(
 							'type' => 'hidden',
-							'value' => (isset($default['csv_object'])) ? $default['csv_object'] : ''
+							'value' => ''
 						),
 						'mailKey' => array(
+							'type' => 'hidden',
+							'value' => ''
+                        ),
+                        'formatted_emails' => array(
 							'type' => 'hidden',
 							'value' => ''
                         )
@@ -218,20 +263,8 @@ class Composer {
 					'fields' => array(
 						'csv_recipient' => array(
 							'type' => 'html',
-							'content' => implode('<br />', 
-								array(
-									form_textarea(
-										array(
-											'name' => 'csv_recipient',
-											'id' => 'csv_recipient',
-											'rows' => '10',
-											'class' => 'required',
-										)
-									),
-									form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
-								)
+							'content' => implode('<br />', $csvHTML)
 							)
-						)
 					)
 				),
 				array(
@@ -301,12 +334,50 @@ class Composer {
 			);
 		}
    		$vars['cp_page_title'] = lang('compose_heading');
-		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email:send');
+		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
+		$vars['cp_hompage_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
 		$vars['save_btn_text'] = lang('compose_send_email');
 		$vars['save_btn_text_working'] = lang('compose_sending_email');
-		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email:send')->compile(), $vars['cp_page_title']);
-		console_message($vars, __METHOD__);
-		return $vars;
+		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email/send')->compile(), $vars['cp_page_title']);
+
+        return array(
+            'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+            'breadcrums' => array(
+                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => lang(EXT_NAME)
+            ),
+            'heading' => lang('compose_heading') 
+        );
+	}
+
+	function email($func = ""){
+		switch ($func) {
+			case 'compose':
+			case 'send':
+			case 'sent':
+				return $this->{$func}();
+				break;
+			case 'resend':
+			case 'batch':
+				$id = ee()->uri->segment(7, 0);
+				return $this->resend($id);
+				break;
+			default:
+				$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/email');
+				$vars['cp_page_title'] = lang('email_title');
+				$vars['save_btn_text'] = "";
+				$vars['save_btn_text_working'] = "";
+				$vars['current_action'] = 'email';
+				$vars['sections'] = array();
+				console_message($vars, __METHOD__);
+				return array(
+					'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+					'breadcrumb' => array(
+						ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+					),
+					'heading' => $vars['cp_page_title']
+					);
+				break;
+		}
 	}
 
 	/**
@@ -331,8 +402,7 @@ class Composer {
 			'from_email' => ee()->session->userdata('email')
 		);
 
-		// $email = ee('Model')->get(EXT_SHORT_NAME.':', $cache_data);
-		$email = ee('Model')->get('EmailCache', $cache_data);
+		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->removeMemberGroups();
 		$this->compose($email);
 	}
@@ -361,6 +431,7 @@ class Composer {
 			'cc',
 			'bcc',
 			'csv_object',
+			'formatted_emails',
 			'mailKey'
 		);
 
@@ -379,12 +450,11 @@ class Composer {
 			}
 		}
 		
-		if (isset($mailKey)) $this->csv_email_column = $mailKey;
 		// create lookup array for easy email lookup
-		if (isset($csv_object) AND $csv_object !== "" AND isset($mailKey)){
+		if (isset($csv_object) AND $csv_object !== ""){
 			$rows =  json_decode($csv_object, TRUE);
 			foreach ($rows as $row){
-				$this->csv_lookup[trim($row[$mailKey])] = $row;
+				$this->csv_lookup[$row[$mailKey]] = $row;
 			}
 		}
 
@@ -465,13 +535,22 @@ class Composer {
 			'total_sent'		=> 0,
 			'plaintext_alt'		=> $plaintext_alt,
 			'attachments'		=> $this->attachments,
-			'csv_object'		=> json_decode($csv_object, TRUE),
-			'mailKey'			=> $mailKey,
 		);
-		console_message($cache_data, __METHOD__);
-		$email = ee('Model')->make(EXT_SHORT_NAME.':EmailCachePlus', $cache_data);
-		// $email = ee('Model')->make('EmailCache', $cache_data);
+
+		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
+
+		// //  Send a single email
+		// if (count($groups) == 0)
+		// {
+		// 	console_message("Sending one", __METHOD__);
+		// 	$debug_msg = $this->deliverOneEmail($email, $recipient);
+		// 	console_message($debug_msg, __METHOD__);
+		// 	ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
+		// 	ee()->functions->redirect(
+		// 		ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
+		// 	);
+		// }
 
 		// Get member group emails
 		$member_groups = ee('Model')->get('MemberGroup', $groups)
@@ -531,6 +610,11 @@ class Composer {
 		$email->save();
 		$id = $email->cache_id;
 
+		// insert data into Mm_cache
+		// set cache_id 
+		// set json content 
+
+
 		// Is Batch Mode set?
 
 		$batch_mode = bool_config_item('email_batchmode');
@@ -554,7 +638,7 @@ class Composer {
 			$this->deleteAttachments($email); // Remove attachments now
 
 			ee()->view->set_message('success', lang('total_emails_sent') . ' ' . $total_sent, $debug_msg, TRUE);
-			ee()->functions->redirect(ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose'));
+			ee()->functions->redirect(ee('CP/URL',EXT_SETTINGS_PATH.'/email/compose'));
 		}
 
 		if ($batch_size === 0)
@@ -599,7 +683,7 @@ class Composer {
 			show_error(lang('problem_with_id'));
 		}
 
-		$email =ee('Model')->get(EXT_SHORT_NAME.':', $id)->first();
+		$email = ee('Model')->get('EmailCache', $id)->first();
 
 		if (is_null($email))
 		{
@@ -650,7 +734,7 @@ class Composer {
 			show_error(lang('problem_with_id'));
 		}
 
-		$caches = ee('Model')->get(EXT_SHORT_NAME.':EmailCachePlus', $id)
+		$caches = ee('Model')->get('EmailCache', $id)
 			->with('MemberGroups')
 			->all();
 
@@ -743,7 +827,6 @@ class Composer {
 			$email_address = array_shift($recipient_array);
 
 			if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
-				console_message($this->csv_lookup, __METHOD__);
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
@@ -752,7 +835,7 @@ class Composer {
 
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
 				// $to = "{$found['{{first_name}}']} {$found['{{last_name}}']}  <{$found['{{email}}']}>"; 
-				$to = $record[$this->csv_email_column]; 
+				$to = $record['{{email}}']; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -772,10 +855,8 @@ class Composer {
 					'attachments'		=> $this->attachments,
 				);
 
-				// $singleEmail = ee('Model')->get(EXT_SHORT_NAME.':', $cache_data);
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
-				console_message($singleEmail, __METHOD__);
 				if ( ! $this->deliverEmail($singleEmail, $to))
 				{
 					$singleEmail->delete();
@@ -848,7 +929,7 @@ class Composer {
 	 * Formats the message of an email based on the text format type
 	 *
 	 * @param	obj	$email	An EmailCache object
-	 * @return	string		The  message
+	 * @return	string		The formatted message
 	 */
 	private function formatMessage(EmailCache $email)
 	{
@@ -880,7 +961,6 @@ class Composer {
 	 */
 	private function censorSubject(EmailCache $email)
 	{
-		console_message($email, __METHOD__);
 		$subject = $email->subject;
 
 		if (bool_config_item('enable_censoring'))
@@ -922,7 +1002,7 @@ class Composer {
 			)
 		);
 
-		$table->setNoResultsText('no_cached_emails', 'create_new_email', ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose'));
+		$table->setNoResultsText('no_cached_emails', 'create_new_email', ee('CP/URL',EXT_SETTINGS_PATH.'/email/compose'));
 
 		$page = ee()->input->get('page') ? ee()->input->get('page') : 1;
 		$page = ($page > 0) ? $page : 1;
@@ -931,8 +1011,7 @@ class Composer {
 
 		$count = 0;
 
-		// $emails =ee('Model')->get(EXT_SHORT_NAME.':');
-		$emails =ee('Model')->get('EmailCache');
+		$emails = ee('Model')->get('EmailCache');
 
 		$search = $table->search;
 		if ( ! empty($search))
@@ -950,7 +1029,6 @@ class Composer {
 
 		$count = $emails->count();
 
-		console_message($count, __METHOD__);
 		$sort_map = array(
 			'date' => 'cache_date',
 			'subject' => 'subject',
@@ -987,7 +1065,7 @@ class Composer {
 					),
 					'sync' => array(
 						'title' => lang('resend'),
-						'href' => ee('CP/URL',EXT_SETTINGS_PATH.'/email:resend/'. $email->cache_id)
+						'href' => ee('CP/URL',EXT_SETTINGS_PATH.'/email/resend/'. $email->cache_id)
 					))
 				),
 				array(
@@ -1016,10 +1094,9 @@ class Composer {
 			$vars['emails'][] = $email;
 		}
 
-		console_message($vars, __METHOD__);
 		$table->setData($data);
 
-		$base_url = ee('CP/URL',EXT_SETTINGS_PATH.'/email:sent');
+		$base_url = ee('CP/URL',EXT_SETTINGS_PATH.'/email/sent');
 		$vars['table'] = $table->viewData($base_url);
 
 		$vars['pagination'] = ee('CP/Pagination', $count)
@@ -1038,12 +1115,24 @@ class Composer {
 
 		$vars['cp_page_title'] = lang('view_email_cache');
 		ee()->javascript->set_global('lang.remove_confirm', lang('view_email_cache') . ': <b>### ' . lang('emails') . '</b>');
-
-		// ee()->cp->add_js_script(array( 'file' => array('cp/confirm_remove'),));
 		$vars['base_url'] = $base_url;
-		return $vars;
+		$vars['save_btn_text'] = "";
+		$vars['save_btn_text_working'] = "";
+		$vars['sections'] = array();
+		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH.'/email/sent')->compile();
+
+		console_message($vars, __METHOD__);
+        return array(
+            'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+            'breadcrumb' => array(
+                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME
+            ),
+            'heading' => $vars['cp_page_title']
+        );
+
 	}
 
+	
 	/**
 	 * Check for recipients
 	 *
@@ -1119,4 +1208,3 @@ class Composer {
 
 }
 // END CLASS
-// EOF

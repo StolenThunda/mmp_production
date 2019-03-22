@@ -113,7 +113,7 @@ class ManyMailerPlus_ext {
 		// if segment is in category:function structure it would have "exploded" into array by now
 		//So test to see if it is a class function and return result
 		console_message($class, "Class: ".get_class($class). "(".gettype($class).")" );
-		$this->dbg_msg[] = "(".gettype($class).") Class: ".get_class($class); 
+		$this->dbg_msgs->addMsg("(".gettype($class).") Class: ".get_class($class)); 
 		if 	(count($value) == 1 AND in_array($value[0], array_keys($this->sidebar_options)))  return true;
 		return ($this->is_func($value[1], $class)) ?  TRUE : (array_search($value[1], $this->sidebar_options[$value[0]]['links']));
 	}
@@ -261,9 +261,9 @@ class ManyMailerPlus_ext {
 
 
 			if (!isset($vars['left_nav'])){
-				$sidebar = ee('CP/Sidebar')->make();
+				$this->sidebar = ee('CP/Sidebar')->make();
 				foreach(array_keys($this->sidebar_options) as $category){
-					$left_nav = $sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
+					$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
 					if($category == $vars['active'][0] AND isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
 						$list_items = $left_nav->addBasicList();	
 						foreach ($this->sidebar_options[$category]['links'] as $link_text) {
@@ -280,20 +280,27 @@ class ManyMailerPlus_ext {
 			console_message($e_message, 'Unexpected ERROR BEGIN');
 
 			$e = $e->getPrevious();
-			$e_message = "[".$e->getCode()."] ". $e->getMessage(). '::'.$e->getLine();
-			console_message($e_message, 'Unexpected ERROR BEGIN', TRUE);
+			if (!is_null($e)){
+				$e_message = "[".$e->getCode()."] ". $e->getMessage(). '::'.$e->getLine();
+				console_message($e_message, 'HALT!!! ERROR BEGIN', TRUE);
+			}
 		}
 	}
 
 
-	private function control($vars, $viewName=null){
+	private function control($vars){
 			// add messages to final page options 
 			if (count($this->dbg_msgs->data) > 0) $this->viewDbg($vars);
 			
 			console_message($this->dbg_msgs,'Debug Msgs');
 			console_message($vars, 'Final vars before render');
-			// render page
 			return ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars);
+			// render page
+			// return array(
+			// 	'heading' => $vars['cp_page_title'],
+			// 	'body'    => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
+			// 	'sidebar' => $this->sidebar
+			// );
 	}
 	
 	function _update_sidebar_options(&$vars, $additional_links = array())
@@ -1297,9 +1304,7 @@ class ManyMailerPlus_ext {
 		);
 
 		ee()->db->insert('extensions', $data);			
-
-		// create add'l tables
-
+			return $this->addCsvColumn();
 		
 	}	
 	
@@ -1308,15 +1313,42 @@ class ManyMailerPlus_ext {
 	{
 		ee()->db->where('class', __CLASS__);
 		ee()->db->delete('extensions');
+		ee()->load->dbforge();
+		$added_cols = array(
+			'csv_object',
+			'mailKey'
+		);
+		foreach ($added_cols as $col){
+			ee()->dbforge->drop_column('email_cache', $col);
+		}
 	}
 
 
 	function update_extension($version = '')
 	{
+		if(version_compare($version, '0.1.4', '<='))
+		{
+			return $this->addCsvColumn();
+		}
 		if(version_compare($version, $this->version) === 0)
 		{
 			return FALSE;
 		}
 		return TRUE;		
 	}	
+
+	function addCsvColumn(){
+		ee()->load->dbforge();
+		$fields = array(
+			'csv_object' => array(
+				'type' => 'JSON'
+			),
+			'mailKey' => array(
+				'type' => 'VARCHAR',
+				'constraint' => 100
+			)
+			);
+
+		ee()->dbforge->add_column('email_cache', $fields);
+	}
 }

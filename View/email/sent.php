@@ -1,3 +1,4 @@
+<?php ee()->cp->load_package_css('jquery.dynatables'); ?>
 <div class="box table-list-wrap">
 	<div class="tbl-ctrls">
 	<?=form_open($table['base_url'])?>
