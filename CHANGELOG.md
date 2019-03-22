@@ -58,9 +58,7 @@ Figure out why sending email crashes had to comment out following code from comp
 ```//  Send a single email
     if (count($groups) == 0)
     {
-        console_message("Sending one", __METHOD__);
         $debug_msg = $this->deliverOneEmail($email, $recipient);
-        console_message($debug_msg, __METHOD__);
         ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
         ee()->functions->redirect(
             ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
