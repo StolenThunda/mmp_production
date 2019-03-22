@@ -465,12 +465,12 @@ class Composer {
 			'total_sent'		=> 0,
 			'plaintext_alt'		=> $plaintext_alt,
 			'attachments'		=> $this->attachments,
-			'csv_object'		=> json_decode($csv_object, TRUE),
-			'mailKey'			=> $mailKey,
+			// 'csv_object'		=> json_decode($csv_object, TRUE),
+			// 'mailKey'			=> $mailKey,
 		);
 		console_message($cache_data, __METHOD__);
-		$email = ee('Model')->make(EXT_SHORT_NAME.':EmailCachePlus', $cache_data);
-		// $email = ee('Model')->make('EmailCache', $cache_data);
+		// $email = ee('Model')->get(EXT_SHORT_NAME.':EmailCachePlus', $cache_data);
+		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
 
 		// Get member group emails

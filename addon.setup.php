@@ -19,7 +19,7 @@ return array(
       'description' => 'Let your transactional emails get chaperoned by the pros.',
       'docs_url' => './README.md',
       'name' => EXT_NAME,
-      'namespace' => EXT_SHORT_NAME,
+      'namespace' => EXT_NAME,
       'settings_exist' => TRUE,
       'version' => EXT_VERSION,
 
