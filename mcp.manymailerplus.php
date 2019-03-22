@@ -19,7 +19,7 @@ class Manymailerplus_mcp
 	function __construct()
 	{
 		$CI = ee();
-
+		$this->debug = FALSE;
 		if ( ! ee()->cp->allowed_group('can_access_comm'))
 		{
 			show_error(lang('unauthorized_access'), 403);
@@ -987,7 +987,7 @@ class Manymailerplus_mcp
 			ee()->view->set_message('success', lang('emails_removed'), '');
 		}
 
-		$table = ee('CP/Table');
+		$table = ee('CP/Table', array('sort_col' => 'date', 'sort_dir' => 'desc'));
 		$table->setColumns(
 			array(
 				'subject',

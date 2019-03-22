@@ -6,7 +6,13 @@ $(document).ready(function() {
         $("input[name='file_recipient']").change(handleFileSelect);
     }
     $("#recipient_type").change(slide);
-    $("#csv_recipient").change(getEmails);
+    $("#csv_recipient").bind('input', (e) => {
+        var val = e.currentTarget.value;
+        var result = Papa.parse(val.trim(), {
+            header: true
+        });
+        getEmails(result);
+    });
     $("input[name=recipient]").change(countEmails);
     $("select[name='mailtype']").change(messageType);
 });
@@ -38,7 +44,28 @@ function countEmails() {
 function getEmails(data) {
     var csvObj;
     if (typeof data === 'undefined') {
-        data = $("#csv_recipient").val();
+        var val = $("#csv_recipient").val();
+        if (val === "") {
+            Swal.fire({
+                title: "No Data",
+                type: 'error',
+                text: 'No csv data provided!'
+            });
+            return;
+        } else {
+            data = Papa.parse(data, {
+                header: true,
+                error: () => {
+                    showErrors([...new Set(data.errors)])
+                    return;
+                }
+            });
+        }
+    }
+
+    if (data.errors.length > 0) {
+        showErrors([...new Set(data.errors)]);
+        return;
     }
     csvObj = validate_csv(data);
     if (csvObj) {
@@ -55,12 +82,30 @@ function getEmails(data) {
     }
 }
 
+function showErrors(errorArray) {
+    var title = "";
+    var msg = $("<ul style='color:red' />");
+    errorArray.forEach(element => {
+        title += element + "<br />";
+        var itm = $('<li />', {
+            text: element,
+        });
+        msg.append(itm);
+    });
+
+    Swal.fire({
+        'title': title,
+        'type': 'error',
+        'html': msg
+    });
+}
+
 function validate_csv(data) {
     var errs = [];
     var errDetail = [];
     var header_valid, email_column;
-    var header_row = Object.keys(data[0]); // should be column header
-    var first_row_values = Object.values(data[0]); // should begin data
+    var header_row = data.meta.fields; // should be column header
+    var first_row_values = Object.values(data.data[0]); // should begin data
     // has an email column?
     var has_email_column = (first_row_values.filter(word => isValidEmailAddress(word)).length > 0);
 
@@ -74,7 +119,7 @@ function validate_csv(data) {
     var emails = [];
     var tokenized_obj = [];
     if (email_column) {
-        data.forEach(row => {
+        data.data.forEach(row => {
             var newRow = {};
             var token_key, current_csv;
             var current_email = row[email_column.original];
@@ -286,6 +331,14 @@ function setUI() {
 function parseFile(file) {
     Papa.parse(file, {
         header: true,
+        transformHeader: (header) => {
+            var transKeys = tokenizeKeys(header);
+            console.log("transKeys: %o", transKeys);
+        },
+        error: (e, file) => {
+            showErrors([...new Set(data.errors)])
+            return;
+        },
         complete: (results, file) => {
             // read the file metadata
             var output = '';
@@ -306,7 +359,7 @@ function parseFile(file) {
                 $("#csv_recipient").val(csv);
                 $("#recipient").selectedIndex = 0;
                 slide();
-                getEmails(results.data);
+                getEmails(results);
             };
             reader.onerror = function() {
                 Swal.fire('Unable to read ' + file.fileName);
