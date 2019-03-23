@@ -52,3 +52,31 @@
     line-height: 0.8;
     color: #01bf75;
 }
+
+.fixed_header {
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.fixed_header tbody {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    height: 150px;
+}
+
+.fixed_header thead tr {
+    display: block;
+}
+
+.fixed_header thead {
+    background: black;
+    color: #fff;
+}
+
+.fixed_header th,
+.fixed_header td {
+    padding: 5px;
+    text-align: left;
+    width: 200px;
+}

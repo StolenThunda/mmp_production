@@ -1,21 +1,39 @@
 $(document).ready(function() {
     setUI();
-    slide();
 
     if (isAPIAvailable()) {
         $("input[name='file_recipient']").change(handleFileSelect);
     }
-    $("#recipient_type").change(slide);
     $("#csv_recipient").bind('input', (e) => {
         var val = e.currentTarget.value;
         var result = Papa.parse(val.trim(), {
             header: true
         });
+        printTable(result);
         getEmails(result);
+        $("#csv_recipient").val("");
     });
     $("input[name=recipient]").change(countEmails);
     $("select[name='mailtype']").change(messageType);
+    $("button[name=btnReset]").bind('click', (e) => {
+        var file_recip = $('input[name=file_recipient');
+        var recip = $('input[name=recipient');
+        file_recip.wrap('<form>').closest('form').get(0).reset();
+        file_recip.unwrap();
+        recip.val("");
+        countEmails();
+        $('#csv_recipient').val("");
+        // debugger;
+        var parent = $('#csv_content_wrapper').parent();
+        // var div = $("<div class='add-mrg-top'></div>");
+        parent.empty();
+        var table = $("<table id='csv_content' class='fixed_header'></table>");
+        parent.wrapInner(table);
+
+        $("button[name=btnReset]").hide();
+    });
 });
+
 
 function messageType() {
     if ($("select[name='mailtype']").val() === "html") {
@@ -30,41 +48,41 @@ function countEmails() {
     var emails = email_string.split(',');
     var count = (emails[0] === "") ? 0 : emails.length;
 
-    var label = $(".primary_recip > .field-instruct > label");
+    var label = $('input[name=recipient]').parent().prev().find('label');
     var origText = label.text();
     // preserve  original label just append count string
     if (origText.includes('Count')) {
-        var idx = origText.indexOf(' (Recip');
+        var idx = origText.indexOf(' (Count: ');
         if (idx > -1) origText = origText.substr(0, idx);
     }
-    var countText = ` (Recipient Count: ${count})`;
+    var countText = (count > 0) ? ` (Count: ${count})` : "";
     label.text(origText + countText);
 }
 
 function getEmails(data) {
     var csvObj;
     if (typeof data === 'undefined') {
-        var val = $("#csv_recipient").val();
-        if (val === "") {
+        data = $("#csv_recipient").val();
+        if (data === "") {
             Swal.fire({
                 title: "No Data",
                 type: 'error',
                 text: 'No csv data provided!'
             });
             return;
-        } else {
-            data = Papa.parse(data, {
-                header: true,
-                error: () => {
-                    showErrors([...new Set(data.errors)])
-                    return;
-                }
-            });
         }
+        data = Papa.parse(data, {
+            header: true,
+            error: () => {
+                showPapaErrors(data.errors);
+                return;
+            }
+        });
+
     }
 
     if (data.errors.length > 0) {
-        showErrors([...new Set(data.errors)]);
+        showPapaErrors(data.errors);
         return;
     }
     csvObj = validate_csv(data);
@@ -73,22 +91,22 @@ function getEmails(data) {
         $("input[name='recipient_count']").val(csvObj.recipient_count);
         $("input[name='mailKey']").val(csvObj.mailkey);
         $('input[name=recipient]').val(csvObj.email_list);
-        $("#recipient_type").val('recipient').change();
         console.log(csvObj.rawdata);
         console.log(csvObj.data);
         showPlaceholders(csvObj.headers);
         countEmails();
-        slide();
+        $("button[name=btnReset]").show();
     }
 }
 
-function showErrors(errorArray) {
+function showPapaErrors(errorArray) {
+    // errorArray = [...new Set(errorArray.errors.map(x => x.message))];
     var title = "";
-    var msg = $("<ul style='color:red' />");
+    var msg = $("<div style='color:red' />");
     errorArray.forEach(element => {
-        title += element + "<br />";
-        var itm = $('<li />', {
-            text: element,
+        title += element.type + "<br />";
+        var itm = $('<pre />', {
+            text: element.message
         });
         msg.append(itm);
     });
@@ -150,7 +168,7 @@ function validate_csv(data) {
             'headers': Object.values(required_columns.headerKeyMap),
             'data_string': JSON.stringify(tokenized_obj),
             'data': tokenized_obj,
-            'rawdata': data,
+            'rawdata': data.data,
             'recipient_count': emails.length,
             'validated_data': required_columns,
             'email_list': emails.join(',')
@@ -244,7 +262,14 @@ function showPlaceholders(headers) {
                 var plain = $('textarea[name=\'plaintext_alt\']');
                 var msg = $('textarea[name=\'message\']');
                 var message = ($('textarea[name=\'plaintext_alt\']').is(':visible')) ? plain : msg;
-                message.val(message.val() + $(this).text());
+
+                // Insert text into textarea at cursor position and replace selected text
+                var cursorPosStart = message.prop('selectionStart');
+                var cursorPosEnd = message.prop('selectionEnd');
+                var v = message.val();
+                var textBefore = v.substring(0, cursorPosStart);
+                var textAfter = v.substring(cursorPosEnd, v.length);
+                message.val(textBefore + $(this).text() + textAfter);
                 message.focus();
             }
         }).wrap('<tr><td align="center"></td></tr>').closest('tr');
@@ -281,23 +306,6 @@ function displayCSVErrors(errs, errDetail) {
 
 }
 
-function slide() {
-    var defaults = {
-        'recipient': 'input[name=recipient]',
-        'csv_recipient': '#csv_recipient',
-        'file_recipient': "input[name='file_recipient']"
-    };
-
-    var selected = $("#recipient_type").val();
-    const keys = Object.keys(defaults);
-    for (const key of keys) {
-        if (key === selected) {
-            $(defaults[key]).parents("fieldset").eq(0).slideDown();
-        } else {
-            $(defaults[key]).parents("fieldset").eq(0).slideUp();
-        }
-    }
-}
 
 function isAPIAvailable() {
     // Check for the various File API support.
@@ -320,23 +328,24 @@ function isAPIAvailable() {
 }
 
 function setUI() {
+    // hijacks default 'view email' button for SweetAlert2 action!
     $('a.m-link').bind('click', (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
         rel = e.target.rel;
-        showEmail(`.${rel}`);
+        sweetAlertbyID(`.${rel}`);
     });
+    $("button[name=btnReset]").hide();
+
+    $("input[name=recipient]").prop("readonly", true);
 }
 
 function parseFile(file) {
     Papa.parse(file, {
         header: true,
-        transformHeader: (header) => {
-            var transKeys = tokenizeKeys(header);
-            console.log("transKeys: %o", transKeys);
-        },
+        transformHeader: tokenizeKeys,
         error: (e, file) => {
-            showErrors([...new Set(data.errors)])
+            showPapaErrors(data.errors);
             return;
         },
         complete: (results, file) => {
@@ -348,18 +357,24 @@ function parseFile(file) {
             output += ' - LastModified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
 
             // post the results
-            $('#list').append(output);
-
-            printTable(results.data);
+            Swal.fire({
+                position: 'top-end',
+                type: 'success',
+                title: 'File Info',
+                html: output,
+                showConfirmButton: false,
+                timer: 1500
+            });
+            // printTable(results.data);
+            printTable(results);
 
             var reader = new FileReader();
             reader.readAsText(file);
             reader.onload = function(event) {
                 var csv = event.target.result;
                 $("#csv_recipient").val(csv);
-                $("#recipient").selectedIndex = 0;
-                slide();
                 getEmails(results);
+                $("#csv_recipient").val("");
             };
             reader.onerror = function() {
                 Swal.fire('Unable to read ' + file.fileName);
@@ -378,30 +393,64 @@ function handleFileSelect(evt) {
 }
 
 function printTable(data) {
-    var dataCopy = data.concat();
-    var header = dataCopy.shift();
-    var tr = $('<tr/>');
-    Object.keys(header).forEach(itm => {
-        var th = $('<th>')
-            .addClass('csv_table')
-            .text(itm);
-        tr.append(th);
-    });
-    $('#csv_content').append(tr);
-
-
-    data.forEach(record => {
-        var tr = $('<tr/>');
-        Object.values(record).forEach(val => {
-            var td = $('<td>')
-                .text(val);
-            tr.append(td);
+    // var dataCopy = data.concat();
+    // var header = dataCopy.shift();
+    var header = data.meta.fields;
+    var cols = [];
+    header.forEach(v => {
+        cols.push({
+            title: v
         });
-        $('#csv_content').append(tr);
     });
+    // var table = $('#csv_content');
+    // var thead = $('<thead/>');
+    // var tr = $('<tr/>');
+    // Object.keys(header).forEach(itm => {
+    //     var th = $('<th>')
+    //         .addClass('csv_table')
+    //         .text(itm);
+    //     tr.append(th);
+    // });
+    // table.append(thead.append(tr));
+
+
+    // var tbody = $('<tbody/>');
+    // data.forEach(record => {
+    //     var tr = $('<tr/>');
+    //     Object.values(record).forEach(val => {
+    //         var td = $('<td>')
+    //             .text(val);
+    //         tr.append(td);
+    //     });
+    //     tbody.append(tr);
+    // });
+    // table.append(tbody);
+
+    // format data
+    var dtData = [];
+    data.data.forEach(val => {
+        dtData.push(Object.values(val));
+    });
+    // debugger;
+    $('#csv_content')
+        .addClass('fixed_header display')
+        .DataTable({
+            "initComplete": function() {
+                var api = this.api();
+                api.$('td').click(function() {
+                    api.search(this.innerHTML).draw();
+                });
+            },
+            columns: cols,
+            data: dtData,
+            "paging": false,
+            "ordering": false,
+        });
+    $("button[name=btnReset]").show();
+
 }
 
-function showEmail(id) {
+function sweetAlertbyID(id) {
     var html = $(id).html();
     var title = $($.parseHTML(html)).find('h1').text();
     var info = $($.parseHTML(html)).find('.txt-wrap').html();
