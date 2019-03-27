@@ -35,6 +35,7 @@ class Manymailerplus_mcp
 			ee()->cp->add_to_foot($script);
 		}
 		ee()->load->helper('debug');
+		ee()->load->helper('html');
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
 		if (!$this->sidebar_loaded)
 		{
@@ -98,19 +99,12 @@ class Manymailerplus_mcp
 			'plaintext_alt'	=> '',
 			'mailtype'		=> ee()->config->item('mail_format'),
 			'wordwrap'		=> ee()->config->item('word_wrap'),
-			'recipient_type'=> lang('compose_csv_recipient_type')
 		);
 
 		$vars['mailtype_options'] = array(
 			'text'		=> lang('plain_text'),
 			'markdown'	=> lang('markdown'),
 			'html'		=> lang('html')
-		);
-
-		$vars['recipient_types'] = array(
-			'recipient' => lang('compose_default_recipient_type'),
-			'csv_recipient' => lang('compose_csv_recipient_type'),
-			'file_recipient' => lang('compose_file_recipient_type')
 		);
 
 		$member_groups = array();
@@ -158,7 +152,7 @@ class Manymailerplus_mcp
 					'class' => 'required',
 				)
 			),
-			form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
+			form_button('show_csv','Convert CSV','class="btn"')
 		);
 
 		if ($default['mailtype'] != 'html')
@@ -222,54 +216,7 @@ class Manymailerplus_mcp
 			),
 			'recipient_options' => array(
 				array(
-					'title' => 'recipient_type',
-					'desc' => 'recipient_type_desc',
-					'fields' => array(
-						'dump_vars' => array(
-							'type' => 'html',
-							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
-						)
-						,'recipient_type' => array(
-							'type' => 'html',
-							'content' => form_dropdown('recipient_type', $vars['recipient_types'], $default['recipient_type'] , 'id="recipient_type"')
-						),
-						'csv_object' => array(
-							'type' => 'hidden',
-							'value' => ''
-						),
-						'mailKey' => array(
-							'type' => 'hidden',
-							'value' => ''
-                        ),
-                        'formatted_emails' => array(
-							'type' => 'hidden',
-							'value' => ''
-                        )
-					)
-				),
-				array(
-					'title' => 'primary_recipients',
-					'desc' => 'primary_recipients_desc',
-					'fields' => array(
-						'recipient' => array(
-							'type' => 'text',
-							'value' => $default['recipient']
-						)
-					)
-				),
-				array(
-					'title' => 'csv_recipient',
-					'desc' => 'csv_recipient_desc',
-					'fields' => array(
-						'csv_recipient' => array(
-							'type' => 'html',
-							'content' => implode('<br />', $csvHTML)
-							)
-					)
-				),
-				array(
 					'title' => 'file_recipient',
-					'desc' => 'file_recipient_desc',
 					'fields' => array(
 						'files' => array(
 							'type' => 'html',
@@ -282,10 +229,6 @@ class Manymailerplus_mcp
 								)
 							)
 						),
-						'csv_content' => array(
-							'type' => 'html',
-							'content' => '<output id=\'list\'></output><br><table id=\'csv_content\'></table>'
-						),
 						'file_recipient' => array(
 							'type' => 'file',
 							'content' => ee('CP/FilePicker')
@@ -293,10 +236,54 @@ class Manymailerplus_mcp
 								->getLink('Choose File')
 								->withValueTarget('files')
 								->render()
-							)
+						),
+						'dump_vars' => array(
+							'type' => 'hidden',
+							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
+						),
+						'csv_object' => array(
+							'type' => 'hidden',
+							'value' => ''
+						),
+						'mailKey' => array(
+							'type' => 'hidden',
+							'value' => ''
+                        ),
+					)
+				),
+
+				array(
+					'title' => 'csv_recipient',
+					'desc' => 'csv_recipient_desc',
+					'fields' => array(
+						'csv_errors' => array(
+							'type' => 'html',
+							'content' => '<span id="csv_errors"></span></p>'
+						),
+						'csv_recipient' => array(
+							'type' => 'html',
+							'content' => implode('<br />', $csvHTML)
+						),
+						'csv_clear_table' => array(
+							'type' => 'html',
+							'content' => form_button('btnReset','Reset CSV Data', 'class="btn"')
+						),
 					)
 				),
 				array(
+					'title' => 'primary_recipients',
+					'desc' => 'primary_recipients_desc',
+					'fields' => array(
+						'recipient' => array(
+							'type' => 'text',
+							'value' => $default['recipient']
+						),
+							'csv_content' => array(
+							'type' => 'html',
+							'content' => '<table class=\'fixed_header\' id=\'csv_content\'></table>'
+						)
+					)
+				),				array(
 					'title' => 'cc_recipients',
 					'desc' => 'cc_recipients_desc',
 					'fields' => array(
@@ -335,11 +322,14 @@ class Manymailerplus_mcp
 		}
    		$vars['cp_page_title'] = lang('compose_heading');
 		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
-		$vars['cp_hompage_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
+		// $vars['cp_hompage_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
 		$vars['save_btn_text'] = lang('compose_send_email');
 		$vars['save_btn_text_working'] = lang('compose_sending_email');
-		$vars['cp_breadcrumbs'] = array(ee('CP/URL', EXT_SETTINGS_PATH.'/email/send')->compile(), $vars['cp_page_title']);
-
+		ee()->cp->add_to_foot(link_tag(array(
+			'href' => 'http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css',
+			'rel' => 'stylesheet',
+			'type' => 'text/css',
+		)));
         return array(
             'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
             'breadcrums' => array(
