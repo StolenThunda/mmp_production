@@ -152,7 +152,7 @@ class Manymailerplus_mcp
 					'class' => 'required',
 				)
 			),
-			form_button('show_csv','Convert CSV','class="btn"')
+			form_button('show_csv','Parse Emails','class="btn" onClick="getEmails()"')
 		);
 
 		if ($default['mailtype'] != 'html')
@@ -256,10 +256,6 @@ class Manymailerplus_mcp
 					'title' => 'csv_recipient',
 					'desc' => 'csv_recipient_desc',
 					'fields' => array(
-						'csv_errors' => array(
-							'type' => 'html',
-							'content' => '<span id="csv_errors"></span></p>'
-						),
 						'csv_recipient' => array(
 							'type' => 'html',
 							'content' => implode('<br />', $csvHTML)
@@ -277,8 +273,7 @@ class Manymailerplus_mcp
 						'recipient' => array(
 							'type' => 'text',
 							'value' => $default['recipient']
-						),
-							'csv_content' => array(
+						),'csv_content' => array(
 							'type' => 'html',
 							'content' => '<table class=\'fixed_header\' id=\'csv_content\'></table>'
 						)
