@@ -2,8 +2,13 @@
 
 ## Welcome to ManyMailerPlus
 
-This ExpressionEngine extension/module allows you to send custom emails (using placeholders) to send emails to a list of people using a csv list!
-The email for is pretty much the same as the native 'Communicate' utility with a new enhancement of the 'Recipent Entry Method':
+This ExpressionEngine extension/module allows you to send custom emails (using placeholders)
+
+![placeholders](./images/placeholders.png))
+
+to send emails to a list of people using a csv list!
+The email form is based on the native 'Communicate' utility with a new enhancement of the 'Recipent Options':
+![CSV Upload](./images/compose_1.png)
 
 ### Installation
 
@@ -13,23 +18,27 @@ Move the 'manymailerplus' folder to the *./system/user/addons* directory
 
 #### Entry Methods
 
-##### Default
-
-Default refers to typing in the 'Primary Recipients' textbox
-
-![Method of Entry](./images/recip_method.png)
-
-##### CSV (Raw)
-
-This method accepts a pasted CSV file.
-
-![CSV Paste](./images/recip2.png)
-
 ##### CSV (Upload)
 
 Enables uploads of local file
 
-![CSV Paste](./images/recip3.png)
+![CSV Upload](./images/csv_upload.png)
+
+##### CSV (Raw)
+
+This method accepts a pasted CSV file. After pressing the "Convert" button the pasted text will be verified.
+If the csv file is a valid email listing, the results(see below) will be posted to the page. on a table to be
+reviewed and the harvested emails will be inserted into the "Recipients Emails" textbox[^1].
+
+![CSV Paste](./images/csv_raw_linenums.png)
+
+Any errors validate the data are prominently displayed along with suggestions for fixes
+
+![CSV Paste](./images/csv_raw_errors.png)
+
+##### CSV Results
+
+![CSV Result](./images/csv_result.png)
 
 ### Required Columns
 
@@ -48,6 +57,8 @@ Enables uploads of local file
 ### Optional Columns
 
 All other columns will be automatically injested to create tokenized placeholder buttons for use during email composition.
+
+[^1]: Recipient Emails textbox is disabled by default
 
 ## Changelog
 
