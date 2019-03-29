@@ -57,9 +57,10 @@ span>ul {
     color: red !important;
     padding: 0 20px !important;
     margin: 10px 0 !important;
+    list-style-type: none;
 }
 
-.errCode li {
+.errCode {
     padding: 0 20px !important;
     list-style-type: none;
 }
