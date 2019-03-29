@@ -1,6 +1,5 @@
 <?php
 	ee()->cp->load_package_css('settings');
-	ee()->cp->load_package_js('settings');
 ?>
 <div class="col-group ">
 		<?php if (isset($current_action)) : ?>
