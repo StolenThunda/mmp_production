@@ -5,3 +5,4 @@
 .vscode/sftp.json
 View/email/csv-field.php
 manymailerplus/View/sidebar_view.php
+ext.manymailerplus.php
