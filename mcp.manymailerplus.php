@@ -252,17 +252,6 @@ class Manymailerplus_mcp
 					)
 				),
 				array(
-					'title' => 'csv_linenum',
-					'desc' => 'csv_linenum_desc',
-					'fields' => array(
-						'csv_linenum' => array(
-							'type' => 'yes_no',
-							'value' => FALSE
-						)
-					)
-						),
-
-				array(
 					'title' => 'csv_recipient',
 					'desc' => 'csv_recipient_desc',
 					'fields' => array(

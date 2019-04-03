@@ -1,5 +1,11 @@
 $(document).ready(function() {
-
+    $.fn.extend({
+        val_with_linenum: function(v) {
+            return this.each(() => {
+                $(this).val(v).trigger('input');
+            });
+        }
+    });
     // hijacks default 'view email' button for SweetAlert2 action!
     $('a.m-link').bind('click', (e) => {
         e.preventDefault();
@@ -7,11 +13,44 @@ $(document).ready(function() {
         rel = e.target.rel;
         sweetAlertbyID(`.${rel}`);
     });
-    $("#csv_recipient").wrap('<div id="csv_recipient_wrapper" ></div>');
+    $("#csv_recipient")
+        .on('paste', function(e) {
+            var val = $(this).val();
+            resetRecipients(true);
+            $(this).val(val);
+        })
+        .bind('input', (e) => {
+            var val = e.currentTarget.value;
+            if (val === "") {
+                TLN.remove_line_numbers('csv_recipient');
+            } else {
+                TLN.append_line_numbers('csv_recipient');
+            }
+        })
+        .wrap('<div id="csv_recipient_wrapper" ></div>');
     $("button[name=btnReset]").hide();
     if (isAPIAvailable()) {
         $("input[name='file_recipient']").change((evt) => {
-            parseData(evt.target.files[0]);
+            // parseData(evt.target.files[0]);
+            resetRecipients();
+            var fileType = /csv.*/;
+            var file = evt.target.files[0];
+            if (file.type.match(fileType) || file.name.slice(-3) === 'csv') {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $("#csv_recipient").val_with_linenum(reader.result);
+                }
+                reader.readAsText(file);
+
+            } else {
+                var extension = (file.type !== "") ? file.type : file.name.slice(file.name.indexOf('.'));
+                $("#csv_recipient").val_with_linenum("");
+                Swal.fire({
+                    'title': "Invalid File",
+                    'type': 'error',
+                    'html': `File type( <span style='color:red'>${extension} </span>): not suppored!`
+                });
+            }
         });
     }
     $("input[name=recipient]").prop("readonly", true);
@@ -21,38 +60,20 @@ $(document).ready(function() {
         resetRecipients(true);
     });
     $("button[name=convert_csv]").bind('click', (e) => {
+        resetRecipients();
         var val = $("#csv_recipient").val();
         parseData(val.trim());
     });
-    var $target = $(".yes_no");
-    var observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.attributeName === "class") {
-                var attributeValue = $(mutation.target).prop(mutation.attributeName);
-                if (attributeValue.indexOf("off") >= 0) {
-                    TLN.remove_line_numbers('csv_recipient');
-                } else {
-                    TLN.append_line_numbers('csv_recipient');
-                }
-            }
-        });
-    });
-    if ($target[0]) {
-        observer.observe($target[0], {
-            attributes: true
-        });
-    }
 });
 
 function resetRecipients(all) {
     if (all) {
-        $("#csv_recipient").val('');
+        $("#csv_recipient").val_with_linenum('');
         // reset upload
         var file_recip = $('input[name=file_recipient');
         file_recip.wrap('<form>').closest('form').get(0).reset();
         file_recip.unwrap();
-        $('.yes_no').addClass('off');
-        $('.yes_no').removeClass('on');
+
     }
     // reset emails and errors
     $('input[name=recipient').val("");
@@ -112,10 +133,6 @@ function getEmails(data) {
         }
     }
 
-    // if (data.errors.length > 0) {
-    //     showPapaErrors(data.errors);
-    //     // return;
-    // }
     csvObj = validate_csv(data);
     $("button[name=btnReset]").show();
     if (csvObj) {
@@ -123,7 +140,6 @@ function getEmails(data) {
         $("input[name='recipient_count']").val(csvObj.recipient_count);
         $("input[name='mailKey']").val(csvObj.mailkey);
         $('input[name=recipient]').val(csvObj.email_list);
-        console.log(csvObj.data);
         showPlaceholders(csvObj.headers);
         countEmails();
         return true;
@@ -132,11 +148,12 @@ function getEmails(data) {
 }
 
 function validate_csv(data) {
-    var errObjs = [];
     var errs = [];
     var errDetail = [];
     var header_valid, email_column;
-    var first_row_values = Object.values(data.data[0]); // should begin data
+    var rowdata = Object.values(data.data[0]);
+    var first_row_values = rowdata.filter(val => !Array.isArray(val));
+
     // email column in file?
     var file_contains_emails = (first_row_values.filter(word => isValidEmailAddress(word)).length > 0);
 
@@ -151,31 +168,27 @@ function validate_csv(data) {
     var tokenized_obj = [];
     data.data.forEach(row => {
         var newRow = {};
-        var token_key, current_csv;
+        var token_key;
         var current_email = row[email_column.original];
         if (email_column) {
             if (current_email && isValidEmailAddress(current_email)) {
                 emails.push(current_email.trim());
             } else {
-                var tmp = "Column (" + email_column.original + "): does not contain email data (" + current_email + ")";
-                if (!errs.includes(tmp)) {
-                    errs.unshift(tmp);
-                }
+                var tmp = "Column (" + email_column.original + "): does not contain email data";
+                if (!errDetail.includes(tmp)) errDetail.unshift(tmp);
             }
         }
         for (var itm in row) {
             token_key = required_columns.headerKeyMap[itm];
             newRow[token_key] = row[itm];
         }
-        tokenized_obj.unshift(newRow);
+        tokenized_obj.push(newRow);
     });
 
-    if (!email_column || !file_contains_emails) errs.unshift("Valid Email Column Header Not Found");
-    if (file_contains_emails && !header_valid) {
-        errs.unshift('Email column is mislabeled');
-    }
-    if (!required_columns) errs.unshift("Required Columns: email, first_name, last_name");
-    if (!required_columns) errs.unshift("Required Columns: email, first_name, last_name");
+    if (!header_valid) errs.unshift("Invalid Header");
+    if (!email_column || !file_contains_emails) errDetail.unshift("No Valid Email Column Header Found");
+    if (file_contains_emails && !email_column) errDetail.unshift('Email column is mislabeled');
+    if (!required_columns) errDetail.unshift("Required Columns: email, first_name, last_name");
     if (errs.length === 0) {
         return {
             'mailkey': required_columns.email_column.val,
@@ -192,7 +205,8 @@ function validate_csv(data) {
         var current_csv = $("#csv_recipient").val().split(/\n+/g);
         current_csv.unshift(errs[0].toUpperCase());
         let new_csv = current_csv.join('\n');
-        $("#csv_recipient").val(new_csv);
+        $("#csv_recipient").val_with_linenum(new_csv);
+
         return null;
     }
 }
@@ -206,7 +220,7 @@ function intersection(d, regX) {
             foundColumn.push({
                 original: csvColumn.trim(),
                 val: tokenizeKey(testColumn),
-                idx: idx
+                // idx: idx
             });
         }
     });
@@ -238,7 +252,7 @@ function validateRequiredKeys(data) {
         if (isNotSet)
             reqKeys.errors.push(`Acceptable Values for ${k}: ${validHeaders[k]}`);
     });
-    reqKeys.validHeader = ((invalidColumns.length === 0) && header_has_no_email_data);
+    reqKeys.validHeader = (reqKeys.errors.length === 0 && header_has_no_email_data);
     return reqKeys;
 }
 
@@ -347,6 +361,13 @@ function isAPIAvailable() {
 }
 
 function parseData(str) {
+    // remove validation errors
+    var current_csv = $("#csv_recipient").val().split(/\n+/g);
+    if (current_csv[0] === current_csv[0].toUpperCase()) {
+        current_csv.shift();
+        $("#csv_recipient").val_with_linenum(current_csv.join('\n'));
+        str = $("#csv_recipient").val();
+    }
     if (str === "") {
         Swal.fire({
             'title': 'No CSV Data Provided',
@@ -366,6 +387,11 @@ function parseData(str) {
             data.headers = results.meta.fields;
             data.errors = results.errors;
             data.data = results.data;
+
+            if (data.data.length === 0) {
+                showPapaErrors(data.errors);
+                return;
+            }
             data.dtCols = [];
             data.dtData = [];
 
@@ -384,35 +410,6 @@ function parseData(str) {
                 data: data.dtData,
             });
 
-            // $("#csv_recipient").val(data.string);
-
-            if (file) {
-                // read the file metadata
-                var output = '';
-                output += '<span style="font-weight:bold;">' + escape(file.name) + '</span><br />\n';
-                output += ' - FileType: ' + (file.type || 'n/a') + '<br />\n';
-                output += ' - FileSize: ' + file.size + ' bytes<br />\n';
-                output += ' - LastModified: ' + (file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a') + '<br />\n';
-
-                // post the results
-                Swal.fire({
-                    position: 'top-end',
-                    type: 'success',
-                    title: 'File Info',
-                    html: output,
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-
-                var reader = new FileReader();
-                reader.readAsText(file);
-                reader.onload = (evt) => {
-                    $("#csv_recipient").val(evt.target.result);
-                };
-                reader.onerror = function() {
-                    Swal.fire('Unable to read ' + file.fileName);
-                };
-            }
             if (getEmails(data)) {
                 initTable(data);
             }
@@ -424,7 +421,7 @@ function parseData(str) {
 
 
 function initTable(data) {
-    $("#csv_recipient").val("");
+    $("#csv_recipient").val_with_linenum('');
     return $('#csv_content')
         .addClass('fixed_header display')
         .DataTable({
@@ -535,10 +532,11 @@ const TLN = {
     append_line_numbers: function(id) {
         let ta = document.getElementById(id);
         if (ta === null) {
-            return console.warn("[tln.js] Couldn't find textarea of id '" + id + "'");
+            return console.error("[tln.js] Couldn't find textarea of id '" + id + "'");
         }
-        if (ta.className.indexOf("tln-active") != -1) {
-            return console.log("[tln.js] textarea of id '" + id + "' is already numbered");
+        if (ta.className.indexOf("tln-active") !== -1) {
+            return;
+            // return console.log("[tln.js] textarea of id '" + id + "' is already numbered");
         }
         ta.classList.add("tln-active");
         ta.style = {};
@@ -588,10 +586,11 @@ const TLN = {
     remove_line_numbers: function(id) {
         let ta = document.getElementById(id);
         if (ta === null) {
-            return console.warn("[tln.js] Couldn't find textarea of id '" + id + "'");
+            return console.error("[tln.js] Couldn't find textarea of id '" + id + "'");
         }
         if (ta.className.indexOf("tln-active") == -1) {
-            return console.warn("[tln.js] textarea of id '" + id + "' isn't numbered");
+            return;
+            // return console.log("[tln.js] textarea of id '" + id + "' isn't numbered");
         }
         ta.classList.remove("tln-active");
 
