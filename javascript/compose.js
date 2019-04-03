@@ -13,6 +13,30 @@ $(document).ready(function() {
         rel = e.target.rel;
         sweetAlertbyID(`.${rel}`);
     });
+    $("body")
+        // .off("click", "*[data-conditional-modal]")
+        .on("click", "*[data-conditional-modal]",
+            function(e) {
+                e.preventDefault();
+                $('.modal-confirm-remove').hide();
+                swal.fire({
+                    type: 'warning',
+                    html: $('.modal-confirm-remove').find('.form-standard'),
+                    showCloseButton: true,
+                    showCancelButton: false,
+                    showConfirmButton: false
+                }).then((result) => {
+                    if (result.value) {
+                        Swal.fire(
+                            'Deleted!',
+                            'Your file has been deleted.',
+                            'success'
+                        )
+                    }
+                });
+                $('.app-overlay').removeClass('app-overlay---open')
+                return;
+            });
     $("#csv_recipient")
         .on('paste', function(e) {
             var val = $(this).val();
@@ -63,6 +87,11 @@ $(document).ready(function() {
         resetRecipients();
         var val = $("#csv_recipient").val();
         parseData(val.trim());
+    });
+
+    $("body").on("click", "*[data-conditional-modal]", function(e) {
+        e.preventDefault();
+
     });
 });
 
