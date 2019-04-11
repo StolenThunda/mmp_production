@@ -116,7 +116,7 @@
                                 $this->_string .= "console.{$method}();\n"; // NOTE: fall through handles multiple syntaxes  
                             default:    // console.log, .info, .group, .groupCollapsed, .error, 
                                 $this->_string .= "console.{$method}";
-                                $this->_string .= "('$str'"; 
+                                $this->_string .= '("'. nl2br($str) .'"'; 
                                 $this->_string .= (is_null($style) ? null: ",'{$style}'");       
                                 $this->_string .= (is_null($obj) ? "": ",{$obj}");
                                 $this->_string .= ");\n";

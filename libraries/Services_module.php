@@ -21,7 +21,7 @@
 
 require_once(PATH_THIRD.EXT_SHORT_NAME.'/config.php');
 
-class ManyMailerPlus_ext {
+class Services_module {
 	var $config;
 	var $debug = FALSE;
 	var $email_crlf = '\n';
@@ -72,6 +72,14 @@ class ManyMailerPlus_ext {
 			);
 			return $this->control($vars);
 		}
+		if (!$this->model){
+			$this->model = new stdClass();
+		}
+		$this->model->settings = array(
+			$this->site_id => array(
+				'service_order' => explode(',', ee('Request')->post('service_order'))
+			)
+		);
 	}
 
 	function _remap($method, $params = array()){
@@ -455,7 +463,7 @@ class ManyMailerPlus_ext {
 		{
 			return false;
 		}
-	
+		
 		ee()->lang->loadfile(EXT_SHORT_NAME);
 		ee()->load->library('logger');
 		
@@ -464,7 +472,7 @@ class ManyMailerPlus_ext {
 		unset($data);
 		
 		// Grats to Justin Kimbrell for the alert and code - remove {unwrap} tags
-		$this->email_in['finalbody'] = str_replace(array(LD.'unwrap'.RD,LD.'/unwrap'.RD), '', $this->email_in['finalbody']);
+		$this->email_in['finalbody'] = $this->email_in['message'];
 		
 		if($this->debug == true)
 		{
@@ -472,10 +480,13 @@ class ManyMailerPlus_ext {
 		}
 		
 		// Set X-Mailer
-		$this->email_out['headers']['X-Mailer'] = $this->email_in['headers']['X-Mailer'].' (via '. EXT_NAME . ' ' .$this->version.')';
-		
+		$this->email_out['headers']['X-Mailer'] = APP_NAME .' (via '. EXT_NAME . ' ' .$this->version.')';
+
 		// From (may include a name)
-		$this->email_out['from'] = $this->_name_and_email($this->email_in['headers']['From']);	  
+		$this->email_out['from'] = array(
+			'name' 	=> $this->email_in['from_name']	,  
+			'email' 	=> $this->email_in['from_email']	
+		);  
 		
 		// Reply-To (may include a name)
 		if(!empty($this->email_in['headers']['Reply-To']))
@@ -484,7 +495,7 @@ class ManyMailerPlus_ext {
 		}
 		
 		// To (email-only)
-		$this->email_out['to'] = (is_array($this->email_in['recipients'])) ? $this->email_in['recipients'] : $this->_recipient_array($this->email_in['recipients']);
+		$this->email_out['to'] = $this->email_in['recipient'];
 		
 		// Cc (email-only)
 		if(!empty($this->email_in['cc_array']))
@@ -498,9 +509,9 @@ class ManyMailerPlus_ext {
 				}
 			}
 		}
-		elseif(!empty($this->email_in['headers']['Cc']))
+		elseif(!empty($this->email_in['cc']))
 		{
-			$this->email_out['cc'] = $this->_recipient_array($this->email_in['headers']['Cc']);
+			$this->email_out['cc'] = $this->email_in['cc'];
 		}
 
 		// Bcc (email-only)
@@ -541,11 +552,12 @@ class ManyMailerPlus_ext {
 			console_message($this->email_out);
 		}
 			
-		foreach($settings['service_order'] as $service)
-		{
-			if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
-			{
+		// foreach($settings['service_order'] as $service)
+		// {
+			// if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
+			// {
 				$missing_credentials = true;
+				$service = 'mandrill';
 				switch($service)
 				{
 					case 'mailgun':
@@ -556,10 +568,10 @@ class ManyMailerPlus_ext {
 						}
 						break;				
 					case 'mandrill':
-						if(!empty($settings['mandrill_api_key']))
+						if(!empty($this->services[$service]['mandrill_api_key']))
 						{
-							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
-							$sent = $this->_send_mandrill($settings['mandrill_api_key'], $subaccount);
+							$subaccount = (!empty($this->services[$service]['mandrill_subaccount']) ? $this->services[$service]['mandrill_subaccount'] : '');
+							$sent = $this->_send_mandrill($this->services[$service]['mandrill_api_key'], $subaccount);
 							$missing_credentials = false;
 						}
 						break;
@@ -601,14 +613,14 @@ class ManyMailerPlus_ext {
 				{
 					ee()->logger->developer(sprintf(lang('could_not_deliver'), $service));
 				}
-			}
+			// }
 			
 			if($sent == true)
 			{
 				ee()->extensions->end_script = true;
 				return true;
 			}		
-		}
+		// }
 		
 		return false;
 				  
@@ -638,12 +650,11 @@ class ManyMailerPlus_ext {
 		}
 		unset($content['message']['from']);
 		
-		$mandrill_to = array();
-		
-		foreach($content['message']['to'] as $to)
-		{
-			$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'to'));
-		}
+		$mandrill_to = array('email' => $content['message']['to']);
+		// foreach($content['message']['to'] as $to)
+		// {
+		// 	$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'to'));
+		// }
 		
 		if(!empty($content['message']['cc']))
 		{
@@ -686,6 +697,7 @@ class ManyMailerPlus_ext {
 		$method = (!empty($content['template_name']) && !empty($content['template_content'])) ? 'send-template' : 'send';
 		$content = json_encode($content);
 				
+		console_message($content,__METHOD__);	
 		return $this->_curl_request('https://mandrillapp.com/api/1.0/messages/'.$method.'.json', $headers, $content);
 	}
 	
@@ -1014,6 +1026,7 @@ class ManyMailerPlus_ext {
 			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 			curl_setopt($ch, CURLOPT_USERPWD, $htpw);
 		}
+		console_message($content,__METHOD__);	
 		$status = curl_exec($ch);
 		// echo $status; exit();
 		$curl_error = curl_error($ch);

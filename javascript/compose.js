@@ -31,19 +31,19 @@ $(document).ready(function() {
                             'Deleted!',
                             'Your file has been deleted.',
                             'success'
-                        )
+                        );
                     }
                 });
-                $('.app-overlay').removeClass('app-overlay---open')
+                $('.app-overlay').removeClass('app-overlay---open');
                 return;
             });
     $("#csv_recipient")
-        .on('paste', function(e) {
-            var val = $(this).val();
-            resetRecipients(true);
-            $(this).val(val);
-        })
-        .bind('input', (e) => {
+        // .on('paste', function(e) {
+        //     var val = $(this).val();
+        //     resetRecipients(true);
+        //     $(this).val(val);
+        // })
+        .bind('interact', (e) => {
             var val = e.currentTarget.value;
             if (val === "") {
                 TLN.remove_line_numbers('csv_recipient');
@@ -63,7 +63,7 @@ $(document).ready(function() {
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     $("#csv_recipient").val_with_linenum(reader.result);
-                }
+                };
                 reader.readAsText(file);
 
             } else {

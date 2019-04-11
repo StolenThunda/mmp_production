@@ -815,7 +815,7 @@ class Manymailerplus_mcp
 		{
 			$email_address = array_shift($recipient_array);
 
-			if (isset($this->csv_lookup) AND count($this->csv_lookup) > 0){
+			if (count($this->csv_lookup) > 0){
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
@@ -846,11 +846,14 @@ class Manymailerplus_mcp
 
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
-				if ( ! $this->deliverEmail($singleEmail, $to))
+				ee()->load->library('services_module', null, 'mail_svc');
+				$sent = ee()->mail_svc->email_send($cache_data);
+				console_message(ee()->mail_svc, __METHOD__);
+				if ( ! $sent)
 				{
 					$singleEmail->delete();
 
-					$debug_msg = ee()->email->print_debugger(array());
+					$debug_msg = ee()->email->print_debugger();
 
 					show_error(lang('error_sending_email').BR.BR.$debug_msg);
 				}
