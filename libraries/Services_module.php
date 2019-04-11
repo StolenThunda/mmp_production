@@ -471,7 +471,6 @@ class Services_module {
 		$this->email_in = $data;
 		unset($data);
 		
-		// Grats to Justin Kimbrell for the alert and code - remove {unwrap} tags
 		$this->email_in['finalbody'] = $this->email_in['message'];
 		
 		if($this->debug == true)
@@ -545,7 +544,8 @@ class Services_module {
 		
 		
 		// Set HTML/Text and attachments
-		$this->_body_and_attachments();
+		// $this->_body_and_attachments();
+		console_message($this->email_in, __METHOD__);
 		
 		if($this->debug == true)
 		{
@@ -702,298 +702,9 @@ class Services_module {
 	}
 	
 	
-	function _send_mailgun($api_key, $domain)
-	{
-		$headers = array();
-		$email = $this->email_out;
-		$email['from'] = $this->_recipient_str($email['from'], true);
-	    
-	    foreach($email['headers'] as $header => $value)
-	    {
-		    $email['h:'.$header] = $value;    
-	    }
-	    unset($email['headers']);
-	    
-	    if(!empty($email['reply-to']))
-	    {
-	    	$email['h:Reply-To'] = $this->_recipient_str($email['reply-to'], true);
-	    	unset($email['reply-to']);
-	    }
-	    	    
-	    if(!empty($email['attachments']))
-	    {
-	    	$attachments = $this->_write_attachments();
-	    	unset($email['attachments']);
-	    	$i = 1;	    	
-	    	foreach($attachments as $name => $path)
-	    	{
-	    		$email['attachment'][$i] = '@'.$path;
-	    		$i++;
-	    	}
-	    }
-	    
-	    if(ee()->extensions->active_hook('pre_send'))
-		{
-			$email = ee()->extensions->call('pre_send', 'mailgun', $email);
-		}
-	    
-	    $post = array();
-	    $this->_http_build_post($email, $post);
-	    
-	    return $this->_curl_request("https://api.mailgun.net/v2/$domain/messages", $headers, $post, "api:$api_key");
-	}
 
-
-	function _send_postageapp($api_key)
-	{
-		$content = array(
-			'api_key' => $api_key,
-			'uid' => sha1(serialize($this->email_out['to']).$this->email_out['subject'].ee()->localize->now),
-			'arguments' => array(
-				'headers' => array(
-					'from' => $this->_recipient_str($this->email_out['from'], true),
-					'subject' => $this->email_out['subject'],
-				)
-			)
-		);
-		
-		foreach($this->email_out['headers'] as $header => $value)
-	    {
-		    $content['arguments']['headers'][$header] = $value;    
-	    }
-		
-		/*
-			All recipients, including Cc and Bcc, must be in the recipients array, and will be Bcc by default.
-			Any addresses which are *also* included in the Cc header will be visible as Cc
-		*/
-		$recipients = $this->email_out['to'];
-		if(!empty($this->email_out['cc']))
-	    {
-	    	$recipients = array_merge($recipients,  $this->email_out['cc']);
-	    	$content['arguments']['headers']['cc'] = $this->_recipient_str($this->email_out['cc']);
-	    }
-	    if(!empty($this->email_out['bcc']))
-	    {
-	    	$recipients = array_merge($recipients,  $this->email_out['bcc']);
-	    }
-	    $content['arguments']['recipients'] = $recipients;
-		
-	    if(!empty($this->email_out['reply-to']))
-	    {
-	    	$content['arguments']['headers']['reply-to'] = $this->_recipient_str($this->email_out['reply-to'], true);
-	    }
-	    if(!empty($this->email_out['html']))
-	    {
-	    	$content['arguments']['content']['text/html'] = $this->email_out['html'];
-	    }
-	    if(!empty($this->email_out['text']))
-	    {
-	    	$content['arguments']['content']['text/plain'] = $this->email_out['text'];
-	    }
-	    if(!empty($this->email_out['attachments']))
-	    {
-	    	foreach($this->email_out['attachments'] as $attachment)
-	    	{
-	    		$content['arguments']['attachments'][$attachment['name']] = array(
-	    			'content_type' => $attachment['type'],
-	    			'content' => $attachment['content']
-	    		);
-	    	}
-	    }
-	    
-	    $headers = array(
-	    	'Accept: application/json',
-			'Content-Type: application/json'
-		);
-		
-		if(ee()->extensions->active_hook('pre_send'))
-		{
-			$content = ee()->extensions->call('pre_send', 'postageapp', $content);
-		}
-		$content = json_encode($content);
-		
-		return $this->_curl_request('https://api.postageapp.com/v.1.0/send_message.json', $headers, $content);
-	}
 	
 	
-	function _send_postmark($api_key)
-	{	
-	   	$email = array(
-	    	'From' => $this->_recipient_str($this->email_out['from'], true),
-	    	'To' => $this->_recipient_str($this->email_out['to']),
-	    	'Subject' => $this->email_out['subject'],
-	    	'Headers' => array($this->email_out['headers'])
-	    );
-	    if(!empty($this->email_out['reply-to']))
-	    {
-	    	$email['ReplyTo'] = $this->_recipient_str($this->email_out['reply-to'], true);
-	    }
-	    if(!empty($this->email_out['cc']))
-	    {
-	    	$email['Cc'] = $this->_recipient_str($this->email_out['cc']);
-	    }
-	    if(!empty($this->email_out['bcc']))
-	    {
-	    	$email['Bcc'] = $this->_recipient_str($this->email_out['bcc']);
-	    }
-	    if(!empty($this->email_out['html']))
-	    {
-	    	$email['HtmlBody'] = $this->email_out['html'];
-	    }
-	    if(!empty($this->email_out['text']))
-	    {
-	    	$email['TextBody'] = $this->email_out['text'];
-	    }
-	    if(!empty($this->email_out['attachments']))
-	    {
-	    	foreach($this->email_out['attachments'] as $attachment)
-	    	{
-	    		$email['Attachments'][] = array(
-	    			'Name' => $attachment['name'],
-	    			'ContentType' => $attachment['type'],
-	    			'Content' => $attachment['content']
-	    		);
-	    	}
-	    }
-
-		$headers = array(
-	    	'Accept: application/json',
-			'Content-Type: application/json',
-			'X-Postmark-Server-Token: '.$api_key
-		);
-		
-		if(ee()->extensions->active_hook('pre_send'))
-		{
-			$email = ee()->extensions->call('pre_send', 'postmark', $email);
-		}	
-		$email = json_encode($email);
-		
-		return $this->_curl_request('http://api.postmarkapp.com/email', $headers, $email);
-	}	
-	
-	
-	function _send_sendgrid($api_key)
-	{
-		$email = $this->email_out;
-		$email['headers'] = json_encode($email['headers']);
-		
-		if(!empty($email['from']['name']))
-		{
-			$email['fromname'] = $email['from']['name'];		
-		}
-		$email['from'] = $email['from']['email'];
-	    
-	    if(!empty($email['reply-to']))
-	    {
-	    	$email['replyto'] = $email['reply-to']['email'];
-	    	unset($email['reply-to']);
-	    }
-	    
-	    // SendGrid does not support CC
-	    if(!empty($email['cc']))
-	    {
-	    	$email['to'] = array_merge($email['cc'], $email['to']);
-	    }
-	    	    
-	    if(!empty($email['attachments']))
-	    {
-	    	$attachments = $this->_write_attachments();
-	    	unset($email['attachments']);	    	
-	    	foreach($attachments as $name => $path)
-	    	{
-	    		$email['files'][$name] = '@'.$path;
-	    	}
-	    }
-	    
-	    if(ee()->extensions->active_hook('pre_send'))
-		{
-			$email = ee()->extensions->call('pre_send', 'sendgrid', $email);
-		}
-	    
-	    $post = array();
-	    $this->_http_build_post($email, $post);
-
-		return $this->_curl_request('https://api.sendgrid.com/api/mail.send.json', array('Authorization: Bearer ' . $api_key), $post);		
-	}
-	
-	
-	function _send_sparkpost($api_key)
-	{
-		$content = $this->email_out;
-		$recipients = array();
-		
-		$headers = array(
-			'Content-Type: application/json',
-			'Authorization: '.$api_key
-		);
-		
-		foreach($content['to'] as $to)
-		{
-			$recipients[] = array('address' => array('email' => $to));
-		}
-		unset($content['to']);
-		
-		/*
-			Cc and Bcc are handled strangely
-			See https://support.sparkpost.com/customer/portal/articles/1948014-how-to-add-cc-and-bcc-to-emails	
-		*/
-		if(!empty($content['cc']))
-	    {
-		    $cc_headers = array();
-	    	foreach($content['cc'] as $cc)
-	    	{
-		    	$recipients[] = array('address' => array(
-		    		'email' => $cc,
-		    		'header_to' => $recipients[0]['address']['email']
-		    	));
-		    	$cc_headers[] = $cc;
-	    	}
-	    	$content['headers']['CC'] = implode(', ', $cc_headers);
-	    	unset($content['cc']);
-	    }
-
-		if(!empty($content['bcc']))
-	    {
-	    	foreach($content['bcc'] as $bcc)
-	    	{
-		    	$recipients[] = array('address' => array(
-		    		'email' => $bcc,
-		    		'header_to' => $recipients[0]['address']['email']
-		    	));
-	    	}
-	    	unset($content['bcc']);
-	    }
-		
-		if(!empty($content['reply-to']))
-	    {
-	    	$content['reply_to'] = $content['reply-to']['email'];
-	    	unset($content['reply-to']);
-	    }
-
-	    if(!empty($content['attachments']))
-	    {    	
-	    	foreach($content['attachments'] as $k => $attachment)
-	    	{
-	    		$content['attachments'][$k]['data'] = $content['attachments'][$k]['content'];
-	    		unset($content['attachments'][$k]['content']);
-	    	}
-	    }
-	    
-	    $email = array(
-			'recipients' => $recipients,
-			'content' => $content
-		);
-			    
-	    if(ee()->extensions->active_hook('pre_send'))
-		{
-			$email = ee()->extensions->call('pre_send', 'sparkpost', $email);
-		}
-		
-		$email = json_encode($email);
-
-		return $this->_curl_request('https://api.sparkpost.com/api/v1/transmissions', $headers, $email);
-	}	
-
 	
 	/**
 		Ultimately sends the email to each server.
@@ -1066,6 +777,7 @@ class Services_module {
 	**/
 	function _body_and_attachments()
 	{
+		console_message($this->protocol, __METHOD__);
 		if($this->protocol == 'mail')
 		{
 			// The 'mail' protocol sets Content-Type in the headers
