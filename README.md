@@ -30,8 +30,6 @@ This method accepts a pasted CSV file. After pressing the "Convert" button the p
 If the csv file is a valid email listing, the results(see below) will be posted to the page. on a table to be
 reviewed and the harvested emails will be inserted into the "Recipients Emails" textbox[^1].
 
-![CSV Paste](./images/csv_raw_linenums.png)
-
 Any errors validate the data are prominently displayed along with suggestions for fixes
 
 ![CSV Paste](./images/csv_raw_errors.png)

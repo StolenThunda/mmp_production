@@ -348,18 +348,6 @@ function showPlaceholders(headers) {
     });
 }
 
-// function sticktothetop() {
-//     var window_top = $(window).scrollTop();
-//     var top = $('#stick-here').offset().top;
-//     if (window_top > top) {
-//         $('#placeholder').addClass('stick');
-//         $('#stick-here').height($('#placeholder').outerHeight());
-//     } else {
-//         $('#placeholder').removeClass('stick');
-//         $('#stick-here').height(0);
-//     }
-// }
-
 function displayCSVErrors(errs, errDetail) {
     var title = '';
     var msg = $("<ul style='color:red' />");
