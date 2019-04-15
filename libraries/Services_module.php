@@ -494,7 +494,7 @@ class Services_module {
 		}
 		
 		// To (email-only)
-		$this->email_out['to'] = $this->email_in['recipient'];
+		$this->email_out['to'] = array($this->email_in['recipient']);
 		
 		// Cc (email-only)
 		if(!empty($this->email_in['cc_array']))
@@ -545,6 +545,7 @@ class Services_module {
 		
 		// Set HTML/Text and attachments
 		// $this->_body_and_attachments();
+		$this->email_out['html'] = $this->email_in['html'];
 		console_message($this->email_in, __METHOD__);
 		
 		if($this->debug == true)
@@ -651,10 +652,10 @@ class Services_module {
 		unset($content['message']['from']);
 		
 		$mandrill_to = array('email' => $content['message']['to']);
-		// foreach($content['message']['to'] as $to)
-		// {
-		// 	$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'to'));
-		// }
+		foreach($content['message']['to'] as $to)
+		{
+			$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'to'));
+		}
 		
 		if(!empty($content['message']['cc']))
 		{
@@ -737,10 +738,11 @@ class Services_module {
 			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 			curl_setopt($ch, CURLOPT_USERPWD, $htpw);
 		}
-		console_message($content,__METHOD__);	
+		
 		$status = curl_exec($ch);
-		// echo $status; exit();
+		console_message($status,__METHOD__);
 		$curl_error = curl_error($ch);
+		console_message($curl_error,__METHOD__);
 		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		curl_close($ch);
 		

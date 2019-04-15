@@ -20,6 +20,7 @@ class Manymailerplus_mcp
 	{
 		$CI = ee();
 		$this->debug = FALSE;
+		ee()->extensions->end_script = TRUE;
 		if ( ! ee()->cp->allowed_group('can_access_comm'))
 		{
 			show_error(lang('unauthorized_access'), 403);
@@ -172,6 +173,80 @@ class Manymailerplus_mcp
 						)
 					)
 				),
+			),
+				'recipient_options' => array(
+					array(
+						'title' => 'file_recipient',
+						'desc' => 'file_recipient_desc',
+						'fields' => array(
+							'files' => array(
+								'type' => 'html',
+								'content' => form_input(
+									array(
+										'id' => 'files',
+										'name' => 'files[]',
+										'type' => 'hidden',
+										'value' => '0'
+									)
+								)
+							),
+							'file_recipient' => array(
+								'type' => 'file',
+								'content' => ee('CP/FilePicker')
+									->make()
+									->getLink('Choose File')
+									->withValueTarget('files')
+									->render()
+							),
+							'dump_vars' => array(
+								'type' => 'hidden',
+								'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
+							),
+							'csv_object' => array(
+								'type' => 'hidden',
+								'value' => ''
+							),
+							'mailKey' => array(
+								'type' => 'hidden',
+								'value' => ''
+							),
+						)
+					),
+					array(
+						'title' => 'csv_recipient',
+						'desc' => 'csv_recipient_desc',
+						'fields' => array(
+							'csv_errors' => array(
+								'type' => 'html',
+								'content' => '<span id="csv_errors"></span>'
+							),
+							'csv_recipient' => array(
+								'type' => 'html',
+								'content' => implode('<br />', $csvHTML)
+							),
+							
+							'csv_reset' => array(
+								'type' => 'html',
+								'content' => form_button('btnReset','Reset CSV Data', 'class="btn"')
+							),
+						)
+					),
+					array(
+						'title' => 'primary_recipients',
+						'desc' => 'primary_recipients_desc',
+						'fields' => array(
+							'recipient' => array(
+								'type' => 'text',
+								'value' => $default['recipient']
+							),'csv_content' => array(
+								'type' => 'html',
+								'content' => '<table class=\'fixed_header\' id=\'csv_content\'></table>'
+							)
+						)
+					),
+				),
+			'compose_email_detail' =>array(
+				
 				array(
 					'title' => 'email_subject',
 					'fields' => array(
@@ -214,75 +289,9 @@ class Manymailerplus_mcp
 					)
 				)
 			),
-			'recipient_options' => array(
+				
+			'other_recipient_options' => array(	
 				array(
-					'title' => 'file_recipient',
-					'fields' => array(
-						'files' => array(
-							'type' => 'html',
-							'content' => form_input(
-								array(
-									'id' => 'files',
-									'name' => 'files[]',
-									'type' => 'hidden',
-									'value' => '0'
-								)
-							)
-						),
-						'file_recipient' => array(
-							'type' => 'file',
-							'content' => ee('CP/FilePicker')
-								->make()
-								->getLink('Choose File')
-								->withValueTarget('files')
-								->render()
-						),
-						'dump_vars' => array(
-							'type' => 'hidden',
-							'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
-						),
-						'csv_object' => array(
-							'type' => 'hidden',
-							'value' => ''
-						),
-						'mailKey' => array(
-							'type' => 'hidden',
-							'value' => ''
-                        ),
-					)
-				),
-				array(
-					'title' => 'csv_recipient',
-					'desc' => 'csv_recipient_desc',
-					'fields' => array(
-						'csv_errors' => array(
-							'type' => 'html',
-							'content' => '<span id="csv_errors"></span>'
-						),
-						'csv_recipient' => array(
-							'type' => 'html',
-							'content' => implode('<br />', $csvHTML)
-						),
-						
-						'csv_reset' => array(
-							'type' => 'html',
-							'content' => form_button('btnReset','Reset CSV Data', 'class="btn"')
-						),
-					)
-				),
-				array(
-					'title' => 'primary_recipients',
-					'desc' => 'primary_recipients_desc',
-					'fields' => array(
-						'recipient' => array(
-							'type' => 'text',
-							'value' => $default['recipient']
-						),'csv_content' => array(
-							'type' => 'html',
-							'content' => '<table class=\'fixed_header\' id=\'csv_content\'></table>'
-						)
-					)
-				),				array(
 					'title' => 'cc_recipients',
 					'desc' => 'cc_recipients_desc',
 					'fields' => array(
@@ -307,7 +316,7 @@ class Manymailerplus_mcp
 
 		if (ee()->cp->allowed_group('can_email_member_groups'))
 		{
-			$vars['sections']['recipient_options'][] = array(
+			$vars['sections']['other_recipient_options'][] = array(
 				'title' => 'add_member_groups',
 				'desc' => 'add_member_groups_desc',
 				'fields' => array(
@@ -599,11 +608,6 @@ class Manymailerplus_mcp
 		$email->save();
 		$id = $email->cache_id;
 
-		// insert data into Mm_cache
-		// set cache_id 
-		// set json content 
-
-
 		// Is Batch Mode set?
 
 		$batch_mode = bool_config_item('email_batchmode');
@@ -795,6 +799,7 @@ class Manymailerplus_mcp
 	{
 		$recipient_array = array_slice($email->recipient_array, $email->total_sent);
 		$number_to_send = count($recipient_array);
+		$csv_lookup_loaded = (count($this->csv_lookup) > 0);
 
 		if ($number_to_send < 1)
 		{
@@ -810,21 +815,21 @@ class Manymailerplus_mcp
 				$number_to_send = $batch_size;
 			}
 		}
-
+		ee()->load->library('services_module', null, 'mail_svc');
 		for ($x = 0; $x < $number_to_send; $x++)
 		{
 			$email_address = array_shift($recipient_array);
 
-			if (count($this->csv_lookup) > 0){
+			if ($csv_lookup_loaded){
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
 				$tmp_message = strtr($email->message, $record);
 				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
-
+				console_message($record, __METHOD__);
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
-				// $to = "{$found['{{first_name}}']} {$found['{{last_name}}']}  <{$found['{{email}}']}>"; 
-				$to = $record['{{email}}']; 
+				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
+				// $to = $record['{{email}}']; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -846,36 +851,42 @@ class Manymailerplus_mcp
 
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
-				ee()->load->library('services_module', null, 'mail_svc');
-				$sent = ee()->mail_svc->email_send($cache_data);
-				console_message(ee()->mail_svc, __METHOD__);
-				if ( ! $sent)
-				{
-					$singleEmail->delete();
-
-					$debug_msg = ee()->email->print_debugger();
-
-					show_error(lang('error_sending_email').BR.BR.$debug_msg);
+				ee()->typography->initialize(array(
+					'bbencode_links' => FALSE,
+					'parse_images'	=> FALSE,
+					'parse_smileys'	=> FALSE
+				));
+	
+				$cache_data['html'] = ee()->typography->parse_type($cache_data['message'], array(
+					'text_format'    => ($email->text_fmt == 'markdown') ? 'markdown' : 'xhtml',
+					'html_format'    => 'all',
+					'auto_links'	 => 'n',
+					'allow_img_url'  => 'y'
+				));
+				if (ee()->mail_svc->email_send($cache_data)){
+					$singleEmail->total_sent++;
+					$singleEmail->save();	
+				}else{
+					$this->_removeMail($email);
 				}
-				$singleEmail->total_sent++;
-				$singleEmail->save();
-			}else{				// Assign data for caching
-				if ( ! $this->deliverEmail($email, $email_address))
-				{
-					$email->delete();
-
-					$debug_msg = ee()->email->print_debugger(array());
-
-					show_error(lang('error_sending_email').BR.BR.$debug_msg);
-				}
-			}
-			$email->total_sent++;
+			} else if( ! $this->deliverEmail($email, $email_address))
+			{
+				$this->_removeMail($email);
+			}		
+			$email->total_sent++;		
+				
 		}
-
 		$email->save();
 		return $email->total_sent;
 	}
 
+	private function _removeMail(EmailCache $email){
+		$email->delete();
+
+		$debug_msg = ee()->email->print_debugger(array());
+
+		show_error(lang('error_sending_email').BR.BR.$debug_msg);
+	}
 
 	/**
 	 * Delivers an email
