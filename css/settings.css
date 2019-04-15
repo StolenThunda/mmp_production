@@ -1,179 +1,187 @@
-.service-list li {
-    cursor: move;
-    position: relative;
-}
-
-.service-list li.enabled-service:after,
-.service-list li.disabled-service:after {
-    color: #4ba508;
-    content: '\F00C';
-    font-family: 'FontAwesome';
-    font-size: 10px;
-    font-weight: 400;
-    position: absolute;
-    right: 10px;
-    top: 5px;
-}
-
-.service-list li.disabled-service:after {
-    color: #E6E6E6;
-    content: '\F05E';
-}
-
-.setting-field .service-description {
-    color: gray;
-    margin-bottom: 10px;
-}
-
-.placeholder {
-    width: 100%;
-    overflow: hidden;
-    background: #17aa56;
-    color: #fff;
-    border-radius: 7px;
-    box-shadow: 0 5px #01bf75;
-    padding: 12px 30px 12px 45px;
-}
-
-.placeholder:hover {
-    background-color: #476e9e;
-}
-
-.placeholder:active {
-    position: relative;
-    top: 1px;
-}
-
-.placeholder:before {
-    position: absolute;
-    left: 0;
-    width: 40%;
-    font-size: 160%;
-    line-height: 0.8;
-    color: #01bf75;
-}
-
-span>ul {
-    color: red !important;
-    padding: 0 20px !important;
-    margin: 10px 0 !important;
-    list-style-type: none;
-}
-
-.errCode {
-    padding: 0 20px !important;
-    list-style-type: none;
-}
-
-.fixed_header {
-    table-layout: fixed;
-    border-collapse: collapse;
-}
-
-.fixed_header tbody {
-    display: block;
-    width: 100%;
-    overflow: auto;
-    height: 150px;
-}
-
-.fixed_header thead tr {
-    display: block;
-}
-
-.fixed_header thead {
-    background: black;
-    color: #fff;
-}
-
-.fixed_header th,
-.fixed_header td {
-    padding: 5px;
-    text-align: left;
-    width: 200px;
-}
-
-
-/* Line number CSS follows */
-
-#csv_recipient {
-    resize: none;
-}
-
-#csv_recipient_wrapper {
-    /* border: 1px solid; */
-    overflow: auto;
-    position: relative;
-    height: 160px;
-    /* width: 500px; */
-    display: inline-block;
-    margin: 15px auto
-}
-
-#csv_recipient_wrapper::before {
-    /* content: "wrapper"; */
-    text-transform: uppercase;
-    left: 0px;
-    position: absolute;
-    top: -18px;
-    font-size: 16px;
-    color: red;
-}
-
-.tln-active,
-.tln-wrapper,
-.tln-line {
-    margin: 0;
-    border: 0;
-    padding: 0;
-    outline: 0;
-    box-sizing: border-box;
-    vertical-align: middle;
-    list-style: none;
-}
-
-.tln-active {
-    display: inline-block;
-    padding: 10px;
-    width: calc(100% - 48px);
-    height: 100%;
-    font-size: 16px;
-    line-height: 1.5;
-    font-family: "Roboto Mono", monospace;
-    word-break: break-all;
-    border: 1px solid #aeaeae;
-    background-color: #fff;
-    resize: none;
-    overflow-wrap: normal;
-    overflow-x: auto;
-    white-space: pre;
-}
-
-.tln-wrapper {
-    width: 48px;
-    padding: 11px 5px 35px;
-    height: 100%;
-    word-break: break-all;
-    overflow: hidden;
-    display: inline-block;
-    counter-reset: line;
-}
-
-.tln-line {
-    width: 100%;
-    display: block;
-    text-align: right;
-    line-height: 1.5;
-    font-size: 16px;
-    color: #aeaeae;
-}
-
-.tln-line::before {
-    counter-increment: line;
-    content: counter(line);
-    font-size: 16px;
-    user-select: none;
-}
-
-
-/* Endo of Line number CSS  */
+    .service-list li {
+        cursor: move;
+        position: relative;
+    }
+    
+    .service-list li.enabled-service:after,
+    .service-list li.disabled-service:after {
+        color: #4ba508;
+        content: '\F00C';
+        font-family: 'FontAwesome';
+        font-size: 10px;
+        font-weight: 400;
+        position: absolute;
+        right: 10px;
+        top: 5px;
+    }
+    
+    .service-list li.disabled-service:after {
+        color: #E6E6E6;
+        content: '\F05E';
+    }
+    
+    .setting-field .service-description {
+        color: gray;
+        margin-bottom: 10px;
+    }
+    
+    .placeholder {
+        width: 100%;
+        overflow: hidden;
+        background: #17aa56;
+        color: #fff;
+        border-radius: 7px;
+        box-shadow: 0 5px #01bf75;
+        padding: 12px 30px 12px 45px;
+    }
+    
+    #placeholder {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 4rem;
+    }
+    
+    .placeholder:hover {
+        background-color: #476e9e;
+    }
+    
+    .placeholder:active {
+        position: relative;
+        top: 1px;
+    }
+    
+    .placeholder:before {
+        position: absolute;
+        left: 0;
+        width: 40%;
+        font-size: 160%;
+        line-height: 0.8;
+        color: #01bf75;
+    }
+    
+    .stick-here {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+    }
+    
+    span>ul {
+        color: red !important;
+        padding: 0 20px !important;
+        margin: 10px 0 !important;
+        list-style-type: none;
+    }
+    
+    .errCode {
+        padding: 0 20px !important;
+        list-style-type: none;
+    }
+    
+    .fixed_header {
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+    
+    .fixed_header tbody {
+        display: block;
+        width: 100%;
+        overflow: auto;
+        height: 150px;
+    }
+    
+    .fixed_header thead tr {
+        display: block;
+    }
+    
+    .fixed_header thead {
+        background: black;
+        color: #fff;
+    }
+    
+    .fixed_header th,
+    .fixed_header td {
+        padding: 5px;
+        text-align: left;
+        width: 200px;
+    }
+    /* Line number CSS follows */
+    
+    #csv_recipient {
+        resize: none;
+    }
+    
+    #csv_recipient_wrapper {
+        /* border: 1px solid; */
+        overflow: auto;
+        position: relative;
+        height: 160px;
+        /* width: 500px; */
+        display: inline-block;
+        margin: 15px auto
+    }
+    
+    #csv_recipient_wrapper::before {
+        /* content: "wrapper"; */
+        text-transform: uppercase;
+        left: 0px;
+        position: absolute;
+        top: -18px;
+        font-size: 16px;
+        color: red;
+    }
+    
+    .tln-active,
+    .tln-wrapper,
+    .tln-line {
+        margin: 0;
+        border: 0;
+        padding: 0;
+        outline: 0;
+        box-sizing: border-box;
+        vertical-align: middle;
+        list-style: none;
+    }
+    
+    .tln-active {
+        display: inline-block;
+        padding: 10px;
+        width: calc(100% - 48px);
+        height: 100%;
+        font-size: 16px;
+        line-height: 1.5;
+        font-family: "Roboto Mono", monospace;
+        word-break: break-all;
+        border: 1px solid #aeaeae;
+        background-color: #fff;
+        resize: none;
+        overflow-wrap: normal;
+        overflow-x: auto;
+        white-space: pre;
+    }
+    
+    .tln-wrapper {
+        width: 48px;
+        padding: 11px 5px 35px;
+        height: 100%;
+        word-break: break-all;
+        overflow: hidden;
+        display: inline-block;
+        counter-reset: line;
+    }
+    
+    .tln-line {
+        width: 100%;
+        display: block;
+        text-align: right;
+        line-height: 1.5;
+        font-size: 16px;
+        color: #aeaeae;
+    }
+    
+    .tln-line::before {
+        counter-increment: line;
+        content: counter(line);
+        font-size: 16px;
+        user-select: none;
+    }
+    /* Endo of Line number CSS  */

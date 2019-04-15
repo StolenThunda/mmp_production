@@ -16,15 +16,16 @@ class Manymailerplus_upd {
 		$this->settings = array();
 		
 		// ADD EXTENSION FOR SERVICES INTEGRATION
-		// $ext_data = array(
-		// 	'class'		=> ucfirst(EXT_SHORT_NAME).'_ext',
-		// 	'method'	=> 'email_send',
-		// 	'hook'		=> 'email_send',
-		// 	'settings'	=> serialize($this->settings),
-		// 	'version'	=> $this->version,
-		// 	'enabled'	=> 'y'
-		// );
-        // ee()->db->insert('extensions', $ext_data);			
+		$ext_data = array(
+			'class'		=> ucfirst(EXT_SHORT_NAME).'_ext',
+			'method'	=> 'email_send',
+			'hook'		=> 'email_send',
+			'settings'	=> serialize($this->settings),
+			'version'	=> $this->version,
+			'priority'  => 1,
+			'enabled'	=> 'y'
+		);
+        ee()->db->insert('extensions', $ext_data);			
 
         $mod_data = array(
             'module_name' => EXT_NAME,
@@ -42,15 +43,15 @@ class Manymailerplus_upd {
 	function uninstall()
 	{
 		// ADD EXTENSION FOR SERVICES INTEGRATION
-		// ee()->db->where('class',ucfirst(EXT_SHORT_NAME).'_ext');
-		// ee()->db->delete('extensions');
+		ee()->db->where('class',ucfirst(EXT_SHORT_NAME).'_ext');
+		ee()->db->delete('extensions');
 
 		ee()->db->where('module_name', EXT_NAME);
 		ee()->db->delete('modules');
 
 		// ee()->db->delete('modules', array( 'module_name' => EXT_NAME));
 		// $result = ee()->db->simple_query('delete from exp_modules where module_name like "Manymailerplus%');
-		console_message(ee()->db->last_query(), ee()->db->affected_rows()." Rows Deleted", TRUE);
+		//console_message(ee()->db->last_query(), ee()->db->affected_rows()." Rows Deleted", TRUE);
 
         ee()->load->dbforge();
 		foreach (array('csv_object', 'mailKey') as $column){
@@ -95,13 +96,13 @@ class Manymailerplus_upd {
 		foreach (array_keys($fields) as $column){
 			$hasColumns = ee()->db->field_exists($column, 'exp_email_cache');
 			// console_message(ee()->db->last_query(), ee()->db->affected_rows()." Rows Affected");
-			console_message($column,"Has Column : ".(($hasColumns) ? 'TRUE': 'FALSE'));
+			// console_message($column,"Has Column : ".(($hasColumns) ? 'TRUE': 'FALSE'));
 			if ($hasColumns) break;
 		} 
 		
 		if (!$hasColumns) {
 			$result = ee()->dbforge->add_column('email_cache', $fields);
-			console_message($result->num_rows(), (string) $hasColumns);
+			// console_message($result->num_rows(), (string) $hasColumns);
 		}
 		return ee()->db->field_exists('csv_object', 'exp_email_cache');
 	}

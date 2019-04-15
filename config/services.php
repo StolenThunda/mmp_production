@@ -2,7 +2,7 @@
     return $config = array( 
         'services' => array(
 			'mandrill' => array(
-				'mandrill_api_key',
+				'mandrill_api_key' => 'zd8XeZI2RLIbq4cpUr0btQ',
 				'mandrill_subaccount'
 			),
 			'mailgun' => array(

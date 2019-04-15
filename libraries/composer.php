@@ -692,7 +692,7 @@ class Composer {
 		if ($error == TRUE)
 		{
 			$email->delete();
-			show_error(lang('error_sending_email').BR.BR.$debug_msg);
+			show_error(__METHOD__. ' '. lang('error_sending_email').BR.BR.$debug_msg);
 		}
 
 		$total_sent = 0;
