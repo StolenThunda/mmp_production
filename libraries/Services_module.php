@@ -1,3 +1,4 @@
+
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 /*
@@ -37,10 +38,12 @@ class Services_module {
 
 	function __construct($settings = '')
 	{
+		
 		ee()->load->helper('debug');
 		ee()->load->helper('MessageArray');
 		ee()->load->helper('html');
 		ee()->load->library('composer');
+		$this->debug = TRUE;
         $this->config = ee()->config->item(EXT_SHORT_NAME.'_settings');
         $this->config = ee()->config->item('manymailerplus_settings');
 			
@@ -59,28 +62,6 @@ class Services_module {
 		$this->settings = $settings;
 		$this->site_id = ee()->config->item('site_id');
 		$this->dbg_msgs = new MessageArray(); 
-		$this->services = array(
-			'mandrill' => array(
-				'mandrill_api_key',
-				'mandrill_subaccount'
-			),
-			'mailgun' => array(
-				'mailgun_api_key',
-				'mailgun_domain'
-			),
-			'postageapp' => array(
-				'postageapp_api_key'
-			),			
-			'postmark' => array(
-				'postmark_api_key'
-			),
-			'sendgrid' => array(
-				'sendgrid_api_key',
-			),
-			'sparkpost' => array(
-				'sparkpost_api_key',
-			)
-		);
 		$this->settings = $settings;
 		$this->site_id = ee()->config->item('site_id');
 	}
@@ -114,63 +95,16 @@ class Services_module {
 		}
 		
 		$vars = array(
+			'debug' => $this->debug,
 			'current_service' => false,
 			'current_settings' => $settings,
 			'services' => $services_sorted,
-			'ee_version' => $this->ee_version()
+			'ee_version' => $this->ee_version(),
+			'categories' => array_keys($this->sidebar_options),
 		);
 		
-		if($current_service = ee()->uri->segment(6))
-		{
-			$vars['current_service'] = $this->current_service =  $current_service;
-			
-			// $sections = array(
-			// 	array(
-			// 		'title' => lang('escort_description'),
-			// 		'fields' => array(
-			// 			'description' => array(
-			// 				'type' => 'html',
-			// 				'content' => '<div class="service-description">'.sprintf(lang($current_service.'_description'), ee()->cp->masked_url(lang($current_service.'_link'))).'</div>'
-			// 			)
-			// 		)
-			// 	),
-			// 	array(
-			// 		'title' => lang('escort_status'),
-			// 		'fields' => array(
-			// 			$current_service.'_active' => array(
-			// 				'type' => 'inline_radio',
-			// 				'choices' => array(
-			// 					'y' => lang('escort_enabled'),
-			// 					'n' => lang('escort_disabled')
-			// 				),
-			// 				'value' => (!empty($settings[$current_service.'_active']) && $settings[$current_service.'_active'] == 'y') ? 'y' : 'n'
-			// 			)
-			// 		)
-			// 	)
-			// );
-			// console_message($vars, __METHOD__);
-			// foreach($vars['services'][$current_service] as $field_name)
-			// {
-			// 	$sections[] = array(
-			// 		'title' => lang('escort_'.$field_name),
-			// 		'desc' => ($field_name == 'mandrill_subaccount') ? lang('escort_optional') : '',
-			// 		'fields' => array(
-			// 			$field_name => array(
-			// 				'type' => 'text',
-			// 				'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
-			// 			)
-			// 		)
-			// 	);
-			// }
-			
-			// $vars['form_vars'] = array(
-			// 	'base_url' => ee('CP/URL','addons/settings/escort/save'),
-			// 	'cp_page_title' => lang('escort_'.$current_service.'_name'),
-			// 	'save_btn_text' => 'btn_save_settings',
-			// 	'save_btn_text_working' => 'btn_saving',
-			// 	'sections' => array($sections)
-			// );
-		}
+		$current_service = ee()->uri->segment(6);
+		$vars['current_service'] = $this->current_service = ($current_service == '') ? ee()->uri->segment(5) :  $current_service;
 
 		if(!empty($this->config))
 		{
@@ -182,10 +116,23 @@ class Services_module {
 				->cannotClose()
 				->now();
 		}
-		// echo("<script>console.dir(".json_encode($vars).");</script>");	
-		// return ee('View')->make('escort:settings')->render($vars);
-		return $this->_service_settings($vars); // add specific form for selected service
-		
+		$breadcrumbs = array(
+				ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+				ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services')->compile() => lang('services'),
+			);
+		if ($this->current_service != 'services') array_push(
+			$breadcrumbs,
+			array(
+				ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services/')->compile()  => lang($this->current_service.'_name')
+				)
+			);
+			
+		$vars = $this->_service_settings($vars);
+		console_message($vars, __METHOD__);
+		return array(
+			'vars' => $vars,			
+			'bc' => $breadcrumbs,
+			);
 	}
 	
 	
@@ -214,11 +161,11 @@ class Services_module {
 		ee('CP/Alert')->makeInline('shared-form')
 	      ->asSuccess()
 		  ->withTitle(lang('settings_saved'))
-		  ->addToBody(sprintf(lang('settings_saved_desc'), 'Escort'))
+		  ->addToBody(sprintf(lang('settings_saved_desc'), EXT_NAME))
 	      ->defer();
 	      
 	    ee()->functions->redirect(
-	    	ee('CP/URL')->make('addons/settings/escort/'.$current_service)
+	    	ee('CP/URL')->make('addons/settings/'.EXT_SHORT_NAME.'/'.$current_service)
 	    );
 	}
 
@@ -240,11 +187,10 @@ class Services_module {
 			}
 		}
 	}
-	#endregion
 
 
 	private function _service_settings(&$vars){
-		$this->dbg_msgs->addMsg("Active Link: ". implode('**ACTIVE**',$vars['active']));
+		// $this->dbg_msgs->addMsg("Active Link: ". implode('**ACTIVE**',$vars['active']));
 		$sections = array(
 			array(
 				'title' => lang('description'),
@@ -280,12 +226,12 @@ class Services_module {
 			}
 		}
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/save');
-		$vars['cp_page_title'] = lang(''.end($vars['active']).'_name');
+		$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
+		// $vars['cp_page_title'] = lang(''.end($vars['active']).'_name');
 		$vars['save_btn_text'] = 'btn_save_settings';
 		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array($sections);
-		$this->current_service = 'services:'. end($vars['active']); 
-		console_message($this->dbg_msgs);
+		// $this->current_service = 'services:'. end($vars['active']); 
 		return $vars;
 	}
 	
@@ -942,5 +888,4 @@ class Services_module {
 			);
 
 		ee()->dbforge->add_column('email_cache', $fields);
-	}
-}
+	}}
