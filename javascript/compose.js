@@ -1,4 +1,22 @@
 $(document).ready(function() {
+    $('.service-list').sortable({
+        axis: 'y',
+        opacity: 0.5,
+        update: function() {
+            var serviceOrder = [];
+            $('.service-list li').each(function() {
+                serviceOrder.push($(this).data('service'));
+            });
+            $.post($('.service-list').data('actionUrl'), {
+                service_order: serviceOrder.toString(),
+                CSRF_TOKEN: EE.CSRF_TOKEN
+            });
+        }
+    });
+
+    function newFunction() {
+        return 'escortService';
+    }
     $.fn.extend({
         val_with_linenum: function(v) {
             return this.each(() => {

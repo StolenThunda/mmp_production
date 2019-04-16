@@ -27,6 +27,7 @@ $lang = array(
 	'config_warning_text' => 'You appear to have '.EXT_NAME.' configured via config.php, so changes you make here may be overridden.',
 	'optional' => '(Optional)',
 	'services_title' => 'Services',
+	'services_name' => 'Services',
 	'services' => 'Services',
 	'services_heading' => 'Services Overview',
 	'services_text' => '<p>Activate and configure as many services as you like via the links in the sidebar, and change the service order by dragging each service name into a new position within the sidebar.</p>
