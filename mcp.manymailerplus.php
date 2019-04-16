@@ -37,6 +37,7 @@ class Manymailerplus_mcp
 		}
 		ee()->load->helper('debug');
 		ee()->load->helper('html');
+		ee()->load->library('services_module', null, 'mail_svc');
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
 		if (!$this->sidebar_loaded)
 		{
@@ -378,6 +379,31 @@ class Manymailerplus_mcp
 		}
 	}
 
+	function services($func = ""){
+		return ee()->mail_svc->settings_form(array());
+		// switch ($func) {
+		// 	case 'value':
+		// 		# code...
+		// 		break;
+			
+		// 	default:
+		// 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services');
+		// 		$vars['cp_page_title'] = lang('services_title');
+		// 		$vars['save_btn_text'] = "";
+		// 		$vars['save_btn_text_working'] = "";
+		// 		$vars['current_action'] = 'services';
+		// 		$vars['sections'] = array();
+		// 		console_message($vars, __METHOD__);
+		// 		return array(
+		// 			'body' => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
+		// 			'breadcrumb' => array(
+		// 				ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+		// 			),
+		// 			'heading' => $vars['cp_page_title']
+		// 			);
+		// 		break;
+		// }
+	}
 	/**
 	 * Prepopulate form to send to specific member
 	 *
@@ -815,7 +841,7 @@ class Manymailerplus_mcp
 				$number_to_send = $batch_size;
 			}
 		}
-		ee()->load->library('services_module', null, 'mail_svc');
+		
 		for ($x = 0; $x < $number_to_send; $x++)
 		{
 			$email_address = array_shift($recipient_array);

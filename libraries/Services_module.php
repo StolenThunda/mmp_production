@@ -34,6 +34,7 @@ class Services_module {
 	var $services = array();
 	var $version = EXT_VERSION;
 	var $is_func = null;	
+
 	function __construct($settings = '')
 	{
 		ee()->load->helper('debug');
@@ -48,7 +49,7 @@ class Services_module {
 			$this->email_crlf = ee()->config->item('email_crlf');
 		}
 		$this->model = ee('Model')->get('Extension')
-			->filter('class', ucfirst(get_class($this)))
+			->filter('class', ucfirst(EXT_SHORT_NAME).'_ext')
 			->first();
 		$this->protocol = ee()->config->item('mail_protocol');
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
@@ -58,270 +59,168 @@ class Services_module {
 		$this->settings = $settings;
 		$this->site_id = ee()->config->item('site_id');
 		$this->dbg_msgs = new MessageArray(); 
-		if (!$this->services_loaded OR  !$this->sidebar_loaded)
-		{
-			$this->dbg_msgs->addMsg("Error loading: Services/Sidebar");
-			//render page to show errors
-			$vars = array(
-				'debug_msgs' => $this->dbg_msgs->data, 
-				'base_url' => ee('CP/URL',EXT_SETTINGS_PATH),
-				'cp_page_title' => lang(EXT_SHORT_NAME),
-				'save_btn_text' => 'btn_save_settings',
-				'categories' => array_keys($this->sidebar_options),
-				'save_btn_text_working' => 'btn_saving',
-			);
-			return $this->control($vars);
-		}
-		if (!$this->model){
-			$this->model = new stdClass();
-		}
-		$this->model->settings = array(
-			$this->site_id => array(
-				'service_order' => explode(',', ee('Request')->post('service_order'))
+		$this->services = array(
+			'mandrill' => array(
+				'mandrill_api_key',
+				'mandrill_subaccount'
+			),
+			'mailgun' => array(
+				'mailgun_api_key',
+				'mailgun_domain'
+			),
+			'postageapp' => array(
+				'postageapp_api_key'
+			),			
+			'postmark' => array(
+				'postmark_api_key'
+			),
+			'sendgrid' => array(
+				'sendgrid_api_key',
+			),
+			'sparkpost' => array(
+				'sparkpost_api_key',
 			)
 		);
-	}
-
-	function _remap($method, $params = array()){
-			// find page to display based on category:function model
-			$delim = strpos($method, ':');
-			$retVars = array();
-			$is_link_category = function(&$method)  {
-				return (array_key_exists($method, $this->sidebar_options));
-			};
-			
-			if (is_numeric($delim)){
-				$service = explode(":", $method);
-				$service_func = end($service); 
-				$found = ($is_link_category($service[0]));
-				if ($found){ 
-					$retVars['current'] = $service_func;
-					$retVars['active'] = $service;
-				}
-			}else{
-				if ($is_link_category($method)){
-					$retVars['current'] = $method;
-					$retVars['active'] = array($method);
-					$found = true;
-				}else{
-					console_message($this->current_service . ' is not a valid URI', "Invalid Page");
-				}
-			}
-		return ($found) ? $retVars : $found;
-	}
-
-	function is_func($method, $class=null){
-		$class = !is_object($class) ? $this : $class; 
-		console_message(get_class_methods(get_class($class)), "Searching \'" .get_class($class). "\' for \'{$method}\'" );
-		return (method_exists($class, $method)); //, get_class_methods($class),TRUE) >= 0);
-	}
-
-	function is_valid_uri($value, $class=null)  {
-		$class = (!is_object($class) ? $this : $class); 
-		// if segment is in category:function structure it would have "exploded" into array by now
-		//So test to see if it is a class function and return result
-		console_message($class, "Class: ".get_class($class). "(".gettype($class).")" );
-		$this->dbg_msgs->addMsg("(".gettype($class).") Class: ".get_class($class)); 
-		if 	(count($value) == 1 AND in_array($value[0], array_keys($this->sidebar_options)))  return true;
-		return ($this->is_func($value[1], $class)) ?  TRUE : (array_search($value[1], $this->sidebar_options[$value[0]]['links']));
+		$this->settings = $settings;
+		$this->site_id = ee()->config->item('site_id');
 	}
 
 	function settings_form($all_settings)
 	{	    		
-		try {
-			$viewName = null;
-			$this->current_service = ee()->uri->segment(5, 'intro');
-			
-			$found = $this->_remap($this->current_service);
-			if (!is_array($found))  console_message($this->current_service, "Invalid URI", TRUE);
-			$settings = $this->get_settings();
-			$isAjax = 	ee('Request')->isAjax();
-			$services_sorted = array();
-			$services = ee('Request')->post('service_order');
-			
-			if($isAjax && $services)
-			{
-				$all_settings[$this->site_id]['service_order'] = explode(',', $services);
-				$this->model->settings = $all_settings;
-				$this->model->save();
-				exit();
-			}
-			
-			// Look at custom service order
-			foreach($settings['service_order'] as $service)
-			{
-				$services_sorted[$service] = $this->services[$service];
-			}
-			
-			// Add any services were not included in the custom order
-			foreach($this->services as $service => $service_settings)
-			{
-				if(empty($services_sorted[$service]))
-				{
-					$services_sorted[$service] = $service_settings;
-				}
-			}
-			
-			$this->current_service =  $found['current'];
-			$vars = array(
-				'debug' => $this->debug,
-				'base_url' =>  ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME),
-				'current_service' =>   $this->current_service,
-				'active' => $found['active'], 
-				'current_settings' => $settings,
-				'sections' => [],
-				'ee_version' => $this->ee_version(),
-				'categories' => array_keys($this->sidebar_options),
-				'save_btn_text' => 'btn_save_settings',
-				'save_btn_text_working' => 'btn_saving',
-			);
-
-			if(!empty($this->config))
-			{
-				$vars['form_vars']['extra_alerts'][] = array('config_warning');
-				ee('CP/Alert')->makeInline('config_warning')
-					->asWarning()
-					->withTitle(lang('config_warning_heading'))
-					->addToBody(lang('config_warning_text'))
-					->canClose()
-					->now();
-			}
-
-			switch ($vars['active'][0]) {
-				case 'intro':
-				//
-				//  TODO: add "Settings" page to control function in extenstion 
-				//
-				// 	$vars['sections'] = array(
-				// 	array(
-				// 		array(
-				// 		'title' => 'site_name',
-				// 		'fields' => array(
-				// 			'site_name' => array(
-				// 			'type' => 'html',
-				// 			'content' => img('./images/recip_types.gif'),
-				// 			)
-				// 		)
-				// 		),
-				// 		array(
-				// 		'title' => 'site_short_name',
-				// 		'desc' => 'site_short_name_desc',
-				// 		'fields' => array(
-				// 			'site_short_name' => array(
-				// 			'type' => 'text',
-				// 			'value' => '',
-				// 			'required' => TRUE
-				// 			)
-				// 		)
-				// 		),
-				// 		array(
-				// 		'title' => 'site_online',
-				// 		'desc' => 'site_online_desc',
-				// 		'fields' => array(
-				// 			'is_system_on' => array(
-				// 			'type' => 'inline_radio',
-				// 			'choices' => array(
-				// 				'y' => 'online',
-				// 				'n' => 'offline'
-				// 			)
-				// 			)
-				// 		)
-				// 		)
-				// 	),
-				// );
-				case 'email':
-					$vars['cp_page_title'] = lang(''.$this->current_service.'_title');
-					$this->dbg_msgs->addMsg("Current Svc: {$this->current_service}");
-					if (count($vars['active']) > 1 AND $vars['active'][0] == 'email'){
-						if ($this->is_valid_uri($vars['active'], new Composer)){
-							console_message(array(
-								'in_Composer' => method_exists(new Composer, $this->current_service),
-								'vars' => $vars), "{$this->current_service} is Composer func?");
-							if (in_array($this->current_service, array('compose', 'sent', 'send'))){
-								$composer_vars = ee()->composer->{$this->current_service}();
-							} else{
-								$id = ee()->uri->segment(6, 0);
-								$composer_vars = ee()->composer->{$this->current_service}($id);
-								console_message($composer_vars, "Composer Vars");
-							}
-							$vars = array_merge($vars, $composer_vars);
-							console_message($vars, "Merged Vars");
-							$this->_update_sidebar_options($vars);
-						}
-						$this->dbg_msgs->addMsg("Vars: " .json_encode($vars, true));
-					}
-					break;
-				case 'services':
-					$title = end($vars['active']);
-					$vars['cp_page_title'] = lang(''.$title);
-					$vars['services'] = $services_sorted;
-					if (count($vars['active']) > 1)  { // if $this->current_service is 'services:service_name'
-						$vars = $this->_service_settings($vars); // add specific form for selected service
-					}
-					$this->_update_sidebar_options($vars, array_keys($services_sorted));
-					break;
-				default:
-					// call class function matching uri spec
-					console_message($this->{$this->current_service}($vars), "calling Current service");
-					$vars = $this->{$this->current_service}($vars);
-					break;
-			}
-
-
-			if (!isset($vars['left_nav'])){
-				$this->sidebar = ee('CP/Sidebar')->make();
-				foreach(array_keys($this->sidebar_options) as $category){
-					$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
-					if($category == $vars['active'][0] AND isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
-						$list_items = $left_nav->addBasicList();	
-						foreach ($this->sidebar_options[$category]['links'] as $link_text) {
-							$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category.':'.$link_text));
-						}
-					}
-				}
-			}
+		$settings = $this->get_settings();
+		$services_sorted = array();
 		
-			// render page
-			return $this->control($vars);
-		} catch (\Exception $e) {
-			$e_message = "[".$e->getCode()."] ". $e->getMessage(). '::'.$e->getLine();
-			console_message($e_message, 'Unexpected ERROR BEGIN');
-
-			$e = $e->getPrevious();
-			if (!is_null($e)){
-				$e_message = "[".$e->getCode()."] ". $e->getMessage(). '::'.$e->getLine();
-				console_message($e_message, 'HALT!!! ERROR BEGIN', TRUE);
+		if(ee('Request')->isAjax() && $services = ee('Request')->post('service_order'))
+		{
+			$all_settings[$this->site_id]['service_order'] = explode(',', $services);
+			$this->model->settings = $all_settings;
+			$this->model->save();
+			exit();
+		}
+		
+		// Look at custom service order
+		foreach($settings['service_order'] as $service)
+		{
+			$services_sorted[$service] = $this->services[$service];
+		}
+		
+		// Add any services were not included in the custom order
+		foreach($this->services as $service => $service_settings)
+		{
+			if(empty($services_sorted[$service]))
+			{
+				$services_sorted[$service] = $service_settings;
 			}
 		}
-	}
-
-
-	private function control($vars){
-			// add messages to final page options 
-			if (count($this->dbg_msgs->data) > 0) $this->viewDbg($vars);
+		
+		$vars = array(
+			'current_service' => false,
+			'current_settings' => $settings,
+			'services' => $services_sorted,
+			'ee_version' => $this->ee_version()
+		);
+		
+		if($current_service = ee()->uri->segment(6))
+		{
+			$vars['current_service'] = $this->current_service =  $current_service;
 			
-			console_message($this->dbg_msgs,'Debug Msgs');
-			console_message($vars, 'Final vars before render');
-			return ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars);
-			// render page
-			// return array(
-			// 	'heading' => $vars['cp_page_title'],
-			// 	'body'    => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
-			// 	'sidebar' => $this->sidebar
+			// $sections = array(
+			// 	array(
+			// 		'title' => lang('escort_description'),
+			// 		'fields' => array(
+			// 			'description' => array(
+			// 				'type' => 'html',
+			// 				'content' => '<div class="service-description">'.sprintf(lang($current_service.'_description'), ee()->cp->masked_url(lang($current_service.'_link'))).'</div>'
+			// 			)
+			// 		)
+			// 	),
+			// 	array(
+			// 		'title' => lang('escort_status'),
+			// 		'fields' => array(
+			// 			$current_service.'_active' => array(
+			// 				'type' => 'inline_radio',
+			// 				'choices' => array(
+			// 					'y' => lang('escort_enabled'),
+			// 					'n' => lang('escort_disabled')
+			// 				),
+			// 				'value' => (!empty($settings[$current_service.'_active']) && $settings[$current_service.'_active'] == 'y') ? 'y' : 'n'
+			// 			)
+			// 		)
+			// 	)
 			// );
+			// console_message($vars, __METHOD__);
+			// foreach($vars['services'][$current_service] as $field_name)
+			// {
+			// 	$sections[] = array(
+			// 		'title' => lang('escort_'.$field_name),
+			// 		'desc' => ($field_name == 'mandrill_subaccount') ? lang('escort_optional') : '',
+			// 		'fields' => array(
+			// 			$field_name => array(
+			// 				'type' => 'text',
+			// 				'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
+			// 			)
+			// 		)
+			// 	);
+			// }
+			
+			// $vars['form_vars'] = array(
+			// 	'base_url' => ee('CP/URL','addons/settings/escort/save'),
+			// 	'cp_page_title' => lang('escort_'.$current_service.'_name'),
+			// 	'save_btn_text' => 'btn_save_settings',
+			// 	'save_btn_text_working' => 'btn_saving',
+			// 	'sections' => array($sections)
+			// );
+		}
+
+		if(!empty($this->config))
+		{
+			$vars['form_vars']['extra_alerts'] = array('escort_config_warning');
+			ee('CP/Alert')->makeInline('escort_config_warning')
+				->asWarning()
+				->withTitle(lang('escort_config_warning_heading'))
+				->addToBody(lang('escort_config_warning_text'))
+				->cannotClose()
+				->now();
+		}
+		// echo("<script>console.dir(".json_encode($vars).");</script>");	
+		// return ee('View')->make('escort:settings')->render($vars);
+		return $this->_service_settings($vars); // add specific form for selected service
+		
 	}
 	
-	function _update_sidebar_options(&$vars, $additional_links = array())
+	
+	function save_settings()
 	{
-		if (!empty($additional_links)){
-			foreach($vars['active'] as $active){
-				if (array_key_exists($active, $this->sidebar_options)){
-					$this->sidebar_options[$active]['links'] = array_unique(array_merge($this->sidebar_options[$active]['links'], $additional_links));
+		$settings = $this->get_settings(true);
+		$current_service = '';
+
+		foreach($this->services as $service => $service_settings)
+		{
+			if($v = ee('Request')->post($service.'_active'))
+			{
+				$current_service = $service;
+				$settings[$this->site_id][$service.'_active'] = $v;
+			
+				foreach($service_settings as $setting)
+				{
+					$settings[$this->site_id][$setting] = ee('Request')->post($setting);
 				}
 			}
 		}
-	}
 
+		$this->model->settings = $settings;
+		$this->model->save();
+		
+		ee('CP/Alert')->makeInline('shared-form')
+	      ->asSuccess()
+		  ->withTitle(lang('settings_saved'))
+		  ->addToBody(sprintf(lang('settings_saved_desc'), 'Escort'))
+	      ->defer();
+	      
+	    ee()->functions->redirect(
+	    	ee('CP/URL')->make('addons/settings/escort/'.$current_service)
+	    );
+	}
 
 	function viewDbg(&$vars){
 		if ($this->debug){
@@ -389,40 +288,6 @@ class Services_module {
 		console_message($this->dbg_msgs);
 		return $vars;
 	}
-	
-	function save_settings()
-	{
-		$settings = $this->get_settings(true);
-		$this->current_service = '';
-
-		foreach($this->services as $service => $service_settings)
-		{
-			if($v = ee('Request')->post($service.'_active'))
-			{
-				$this->current_service = $service;
-				$settings[$this->site_id][$service.'_active'] = $v;
-			
-				foreach($service_settings as $setting)
-				{
-					$settings[$this->site_id][$setting] = ee('Request')->post($setting);
-				}
-			}
-		}
-
-		$this->model->settings = $settings;
-		$this->model->save();
-		
-		ee('CP/Alert')->makeInline('shared-form')
-	      ->asSuccess()
-		  ->withTitle(lang('settings_saved'))
-		  ->addToBody(sprintf(lang('settings_saved_desc'), EXT_NAME))
-	      ->defer();
-	      
-	    ee()->functions->redirect(
-	    	ee('CP/URL')->make(EXT_SETTINGS_PATH.'/'.$this->current_service)
-	    );
-	}
-
 	
 	function get_settings($all_sites = false)
 	{
