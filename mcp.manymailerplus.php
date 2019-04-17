@@ -828,8 +828,8 @@ class Manymailerplus_mcp
 				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
 				console_message($record, __METHOD__);
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
-				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
-				// $to = $record['{{email}}']; 
+				//$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
+				$to = $record['{{email}}']; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
