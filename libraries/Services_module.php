@@ -109,17 +109,8 @@ class Services_module {
 				->addToBody(lang('config_warning_text'))
 				->cannotClose()
 				->now();
-		}
-
-		$breadcrumbs = array(
-			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-			ee('CP/URL')->make(EXT_SETTINGS_PATH ."/services")->compile() => lang('services'),
-		);
-		// if the current = the service detail page
-		if (!$this->current_service) array_pop($breadcrumbs);
-
+		}		
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
-		
 		$vars['save_btn_text'] = 'btn_save_settings';
 		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array();
@@ -132,10 +123,7 @@ class Services_module {
 			unset($vars['current_service']);
 		}	   
 		console_message($vars, __METHOD__);
-		return array(
-			'vars' => $vars,			
-			'bc' => $breadcrumbs,
-			);
+		return $vars;
 	}
 
 	function save_settings()
@@ -300,6 +288,12 @@ class Services_module {
 		}
         return $settings;
     
+	}
+
+	function getActiveServiceNames(){
+		$settings = $this->get_settings();
+
+		return json_encode($acts);
 	}
 
 	function ee_version()

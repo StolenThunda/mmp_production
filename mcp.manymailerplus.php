@@ -131,6 +131,10 @@ class Manymailerplus_mcp
 	}
 
 	function services($func = ""){
+		$breadcrumbs = array(
+			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+			ee('CP/URL')->make(EXT_SETTINGS_PATH ."/services")->compile() => lang('services'),
+		);
 		switch ($func) {
 			case 'list':
 				return ee()->mail_svc->get_settings();
@@ -142,6 +146,7 @@ class Manymailerplus_mcp
 				$vars =  ee()->mail_svc->settings_form(array());
 				break;
 		}
+		if (!isset($vars['current_service'])) array_pop($breadcrumbs);
 		$vars['active_service_names'] = ee()->mail_svc->getActiveServiceNames();
 		$vars['sidebar'] = $this->sidebar_options;		
 		// $this->_update_sidebar_options(array_keys($vars['services']) );
