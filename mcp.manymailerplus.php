@@ -5,7 +5,7 @@ use EllisLab\ExpressionEngine\Model\Email\EmailCache;
 use EllisLab\ExpressionEngine\View;
 
 class Manymailerplus_mcp 
-    {
+{
 
 	private $version = EXT_VERSION;
 	private $attachments = array();
@@ -36,8 +36,10 @@ class Manymailerplus_mcp
 		ee()->load->helper('debug');
 		ee()->load->helper('html');
 		ee()->load->library('services_module', null, 'mail_svc');
+		$this->services = ee()->config->item('services', 'services'); 
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
 		$this->sidebar_options = ee()->config->item('options', 'sidebar');
+		$this->_update_sidebar_options(array_keys($this->services));
 		if (!$this->sidebar_loaded)
 		{
 			//render page to show errors
@@ -49,24 +51,28 @@ class Manymailerplus_mcp
 				'save_btn_text_working' => 'btn_saving',
 			);
 			return ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars);
-		// }else{
-		// 	$this->makeSidebar();
+		}else{
+			//$settings_info = $this->mail_svc->getSettingsInfo();
+			
+			console_message($this->sidebar_options, __METHOD__);
+			$this->makeSidebar();
 		}
+		
 	}
 
 	public function makeSidebar(){
-		if (isset($this->sidebar)) unset( $this->sidebar);
 		$this->sidebar = ee('CP/Sidebar')->make();
 		foreach(array_keys($this->sidebar_options) as $category){
 			$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
 			if(isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
 				$list_items = $left_nav->addBasicList();	
 				foreach ($this->sidebar_options[$category]['links'] as $link_text) {
-					$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/services/'.$category.'/'.$link_text));
+					$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category.'/'.$link_text));
 				}
 			}
 		}
 	}
+
 	public static function index(){
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/'.__FUNCTION__);
 		$vars['cp_page_title'] = lang(__FUNCTION__. '_title');
@@ -119,8 +125,9 @@ class Manymailerplus_mcp
 	function services($func = ""){
 		$service_vars =  ee()->mail_svc->settings_form(array());
 		$vars = $service_vars['vars'];
-		console_message($service_vars, __METHOD__);
-		$this->_update_sidebar_options($vars, array_keys($vars['services']) );
+		$vars['sidebar'] = $this->sidebar_options;
+		console_message($vars, __METHOD__);
+		$this->_update_sidebar_options(array_keys($vars['services']) );
 		return array(
 			'body' => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
 			$service_vars['bc'],
@@ -128,15 +135,13 @@ class Manymailerplus_mcp
 		);
 	}
 	
-	function _update_sidebar_options(&$vars, $additional_links = array())
+	function _update_sidebar_options($additional_links = array())
 	{
 		if (!empty($additional_links)){
-			$active = $vars['current_service'];
-			if (array_key_exists($active, $this->sidebar_options)){
-				$this->sidebar_options[$active]['links'] = array_unique(array_merge($this->sidebar_options[$active]['links'], $additional_links));
+			if (array_key_exists('services', $this->sidebar_options)){
+				$this->sidebar_options['services']['links'] = array_unique(array_merge($this->sidebar_options['services']['links'], $additional_links));
 			}
 		}
-		$this->makeSidebar();
 	}
 	/**
 	 * compose

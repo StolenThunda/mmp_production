@@ -45,8 +45,7 @@ class Services_module {
 		ee()->load->library('composer');
 		$this->debug = TRUE;
         $this->config = ee()->config->item(EXT_SHORT_NAME.'_settings');
-        $this->config = ee()->config->item('manymailerplus_settings');
-			
+        // $this->config = ee()->config->item('manymailerplus_settings');
 		if(ee()->config->item('email_crlf') != false)
 		{
 			$this->email_crlf = ee()->config->item('email_crlf');
@@ -55,19 +54,18 @@ class Services_module {
 			->filter('class', ucfirst(EXT_SHORT_NAME).'_ext')
 			->first();
 		$this->protocol = ee()->config->item('mail_protocol');
+		$this->site_id = ee()->config->item('site_id');
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
 		$this->services_loaded = ee()->config->load('services', TRUE, TRUE);
 		$this->sidebar_options = ee()->config->item('options', 'sidebar');
 		$this->services = ee()->config->item('services', 'services'); 
 		$this->settings = $settings;
-		$this->site_id = ee()->config->item('site_id');
-		$this->dbg_msgs = new MessageArray(); 
-		$this->settings = $settings;
-		$this->site_id = ee()->config->item('site_id');
+		$this->dbg_msgs = new MessageArray();
 	}
 
 	function settings_form($all_settings)
-	{	    		
+	{	    				
+		// $settings_info = $this->getSettingInfo($all_settings);
 		$settings = $this->get_settings();
 		$services_sorted = array();
 		
@@ -77,14 +75,13 @@ class Services_module {
 			$this->model->settings = $all_settings;
 			$this->model->save();
 			exit();
-		}
-		
+		}	
 		// Look at custom service order
 		foreach($settings['service_order'] as $service)
 		{
 			$services_sorted[$service] = $this->services[$service];
 		}
-		
+
 		// Add any services were not included in the custom order
 		foreach($this->services as $service => $service_settings)
 		{
@@ -93,7 +90,7 @@ class Services_module {
 				$services_sorted[$service] = $service_settings;
 			}
 		}
-		
+		// console_message($settings_info, __METHOD__);
 		$vars = array(
 			'debug' => $this->debug,
 			'current_service' => false,
@@ -103,8 +100,7 @@ class Services_module {
 			'categories' => array_keys($this->sidebar_options),
 		);
 		
-		$current_service = ee()->uri->segment(6);
-		$vars['current_service'] = $this->current_service = ($current_service == '') ? ee()->uri->segment(5) :  $current_service;
+		$vars['current_service'] = $this->current_service = (ee()->uri->segment(6) == '') ? ee()->uri->segment(5) : ee()->uri->segment(6);
 
 		if(!empty($this->config))
 		{
@@ -116,26 +112,57 @@ class Services_module {
 				->cannotClose()
 				->now();
 		}
+
 		$breadcrumbs = array(
-				ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-				ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services')->compile() => lang('services'),
+			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+			ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services')->compile() => lang('services'),
+		);
+		console_message($this->current_service, __METHOD__);
+		if ($this->current_service !== 'services'){ 
+				array_merge($breadcrumbs, array(
+					ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services/'.$this->current_service)->compile() => lang($this->current_service.'_name')
+					)
 			);
-		if ($this->current_service != 'services') array_push(
-			$breadcrumbs,
-			array(
-				ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services/')->compile()  => lang($this->current_service.'_name')
-				)
-			);
-			
+		}
+				
 		$vars = $this->_service_settings($vars);
-		console_message($vars, __METHOD__);
+		
 		return array(
 			'vars' => $vars,			
 			'bc' => $breadcrumbs,
 			);
 	}
 	
-	
+	public static function getSettingsInfo($all_settings = []){
+		$settings = $this->get_settings();
+		
+		if(ee('Request')->isAjax() && $services = ee('Request')->post('service_order'))
+		{
+			$all_settings[$this->site_id]['service_order'] = explode(',', $services);
+			$this->model->settings = $all_settings;
+			$this->model->save();
+			exit();
+		}	
+		// Look at custom service order
+		foreach($settings['service_order'] as $service)
+		{
+			$services_sorted[$service] = $this->services[$service];
+		}
+
+		// Add any services were not included in the custom order
+		foreach($this->services as $service => $service_settings)
+		{
+			if(empty($services_sorted[$service]))
+			{
+				$services_sorted[$service] = $service_settings;
+			}
+		}
+		return array( 
+			'settings' => $settings,
+			'services_sorted' => $services_sorted
+		);
+	}
+
 	function save_settings()
 	{
 		$settings = $this->get_settings(true);
@@ -235,7 +262,7 @@ class Services_module {
 		return $vars;
 	}
 	
-	function get_settings($all_sites = false)
+	public function get_settings($all_sites = false)
 	{
 	
 		$all_settings = $this->model->settings;
