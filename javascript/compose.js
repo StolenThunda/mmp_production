@@ -1,4 +1,12 @@
 $(document).ready(function() {
+    var service_list = $('h2:contains("Services")').next('ul');
+    service_list.addClass('service-list');
+    var services = service_list.children();
+    services.each(function(index) {
+        var service_name = $(this).text().toLowerCase()
+        $(this).attr('data-service', service_name);
+        $(this).addClass('disabled-service');
+    })
     $('.service-list').sortable({
         axis: 'y',
         opacity: 0.5,

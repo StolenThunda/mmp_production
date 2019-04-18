@@ -1,5 +1,6 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
+use EllisLab\ExpressionEngine\Library\CP\Table;
 use EllisLab\ExpressionEngine\Model\Email\EmailCache;
 // use	manymailerplus\Model\ as EmailCache;
 use EllisLab\ExpressionEngine\View;
@@ -52,8 +53,6 @@ class Manymailerplus_mcp
 			);
 			return ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars);
 		}else{
-			//$settings_info = $this->mail_svc->getSettingsInfo();
-			
 			console_message($this->sidebar_options, __METHOD__);
 			$this->makeSidebar();
 		}
@@ -73,12 +72,13 @@ class Manymailerplus_mcp
 		}
 	}
 
-	public static function index(){
+	public function index(){
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/'.__FUNCTION__);
 		$vars['cp_page_title'] = lang(__FUNCTION__. '_title');
 		$vars['save_btn_text'] = "";
 		$vars['save_btn_text_working'] = "";
 		$vars['current_action'] = __FUNCTION__;
+		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile();
 		$vars['sections'] = array();
 		console_message($vars, __METHOD__);
@@ -110,29 +110,36 @@ class Manymailerplus_mcp
 				$vars['save_btn_text_working'] = "";
 				$vars['current_action'] = 'email';
 				$vars['sections'] = array();
+				$vars['categories'] = array_keys($this->sidebar_options);
 				console_message($vars, __METHOD__);
 				return array(
 					'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
 					'breadcrumb' => array(
-						ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-					),
+						ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME),
 					'heading' => $vars['cp_page_title']
 					);
-				break;
 		}
 	}
 
 	function services($func = ""){
-		$service_vars =  ee()->mail_svc->settings_form(array());
-		$vars = $service_vars['vars'];
-		$vars['sidebar'] = $this->sidebar_options;
-		console_message($vars, __METHOD__);
-		$this->_update_sidebar_options(array_keys($vars['services']) );
-		return array(
-			'body' => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
-			$service_vars['bc'],
-			'heading' => $vars['cp_page_title']
-		);
+		switch ($func) {
+			case 'save':
+				ee()->mail_svc->save_settings();
+				break;
+			case '':
+			default:
+				$service_vars =  ee()->mail_svc->settings_form(array());
+				$vars = $service_vars['vars'];
+				$this->_update_sidebar_options(array_keys($vars['services']) );
+				$vars['sidebar_options'] = $this->sidebar_options;
+				console_message($vars, __METHOD__);
+				return array(
+					'body' => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
+					$service_vars['bc'],
+					'heading' => $vars['cp_page_title']
+				);
+				break;
+		}
 	}
 	
 	function _update_sidebar_options($additional_links = array())
@@ -148,7 +155,7 @@ class Manymailerplus_mcp
 	 *
 	 * @param	obj	$email	An EmailCache object for use in re-populating the form (see: resend())
 	 */
-	public static function compose(EmailCache $email = NULL)
+	public function compose(EmailCache $email = NULL)
 	{
 		$default = array(
 			'from'		 	=> ee()->session->userdata('email'),
@@ -388,9 +395,10 @@ class Manymailerplus_mcp
 				)
 			);
 		}
-   		$vars['cp_page_title'] = lang('compose_heading');
+		$vars['cp_page_title'] = lang('compose_heading');
+		// $vars['current_action'] = __FUNCTION__;
+		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
-		// $vars['cp_hompage_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
 		$vars['save_btn_text'] = lang('compose_send_email');
 		$vars['save_btn_text_working'] = lang('compose_sending_email');
 		ee()->cp->add_to_foot(link_tag(array(
@@ -398,6 +406,7 @@ class Manymailerplus_mcp
 			'rel' => 'stylesheet',
 			'type' => 'text/css',
 		)));
+		console_message($vars, __METHOD__);
         return array(
             'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
             'breadcrums' => array(
@@ -1006,7 +1015,7 @@ class Manymailerplus_mcp
 	/**
 	 * View sent emails
 	 */
-	public static function sent()
+	public function sent()
 	{
 		if ( ! ee()->cp->allowed_group('can_send_cached_email'))
 		{
@@ -1148,7 +1157,9 @@ class Manymailerplus_mcp
 		$vars['cp_page_title'] = lang('view_email_cache');
 		ee()->javascript->set_global('lang.remove_confirm', lang('view_email_cache') . ': <b>### ' . lang('emails') . '</b>');
 		$vars['base_url'] = $base_url;
+		$vars['current_service'] = __FUNCTION__;
 		$vars['save_btn_text'] = "";
+		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['save_btn_text_working'] = "";
 		$vars['sections'] = array();
 		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH.'/email/sent')->compile();
