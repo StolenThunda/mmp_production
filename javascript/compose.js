@@ -4,16 +4,19 @@ $(document).ready(function() {
         .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')
         .addClass('service-list');
     var active_services = $('#active_services').val();
-
-    $.each(service_list.children(), function() {
-        var list_item = $(this).text().toLowerCase();
-        if (active_services && active_services.indexOf(list_item) > -1) {
-            $(this).addClass('enabled-service');
-        } else {
-            $(this).addClass('disabled-service');
-        }
-        $(this).attr('data-service', list_item);
-    });
+    if (active_services) {
+        $.each(service_list.children(), function() {
+            var list_item = $(this).text().toLowerCase();
+            if (active_services && active_services.indexOf(list_item) > -1) {
+                $(this).addClass('enabled-service');
+            } else {
+                $(this).addClass('disabled-service');
+            }
+            $(this).attr('data-service', list_item);
+        });
+    } else {
+        service_list.hide();
+    }
     $('.service-list').sortable({
         axis: 'y',
         opacity: 0.5,

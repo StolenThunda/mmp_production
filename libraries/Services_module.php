@@ -128,7 +128,7 @@ class Services_module {
 		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array();
 		if ($this->current_service) {
-			$vars = $this->_service_settings($vars);
+			$vars = $this->_service_settings($vars, $settings);
 			$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
 		}else{
 			$vars['cp_page_title'] = lang('services');
@@ -195,8 +195,8 @@ class Services_module {
 	}
 
 
-	private function _service_settings(&$vars){
-		console_message($this->current_service, __METHOD__);	
+	private function _service_settings(&$vars, $settings){
+			
 		$sections = array(
 			array(
 				'title' => lang('description'),
