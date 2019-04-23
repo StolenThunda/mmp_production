@@ -1,7 +1,6 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 use EllisLab\ExpressionEngine\Library\CP\Table;
-use EllisLab\ExpressionEngine\Library\CP\Table;
 use EllisLab\ExpressionEngine\Model\Email\EmailCache;
 use EllisLab\ExpressionEngine\View;
 
@@ -124,16 +123,14 @@ class Manymailerplus_mcp
 	function services($func = ""){
 		switch ($func) {
 			case 'list':
-				# code...
 				return ee()->mail_svc->get_settings();
 				break;
 			case 'save':
 				return ee()->mail_svc->save_settings();
 				break;
 			default:
-				# code...
 				$service_vars =  ee()->mail_svc->settings_form(array());
-				
+				// console_message($service_vars, __METHOD__);
 				break;
 		}
 		
@@ -150,7 +147,7 @@ class Manymailerplus_mcp
 		console_message($vars, __METHOD__);
 		return array(
 			'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-			'breadcrumbs' => $service_vars['bc'],
+			'breadcrumb' => $service_vars['bc'],
 			'heading' => $vars['cp_page_title']
 		);
 	}
@@ -409,7 +406,6 @@ class Manymailerplus_mcp
 			);
 		}
 		$vars['cp_page_title'] = lang('compose_heading');
-		// $vars['current_action'] = __FUNCTION__;
 		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
 		$vars['save_btn_text'] = lang('compose_send_email');
@@ -422,8 +418,9 @@ class Manymailerplus_mcp
 		console_message($vars, __METHOD__);
         return array(
             'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-            'breadcrums' => array(
-                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => lang(EXT_NAME)
+            'breadcrumb' => array(
+                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => lang(EXT_NAME),
+                ee('CP/URL')->make(EXT_SETTINGS_PATH .'/email')->compile() => lang('email_title')
             ),
             'heading' => lang('compose_heading') 
         );
@@ -1162,13 +1159,13 @@ class Manymailerplus_mcp
 		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['save_btn_text_working'] = "";
 		$vars['sections'] = array();
-		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH.'/email/sent')->compile();
 
 		console_message($vars, __METHOD__);
         return array(
             'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
             'breadcrumb' => array(
-                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME
+                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+                ee('CP/URL')->make(EXT_SETTINGS_PATH .'/email')->compile() => lang('email_title')
             ),
             'heading' => $vars['cp_page_title']
         );

@@ -114,14 +114,11 @@ class Services_module {
 
 		$breadcrumbs = array(
 			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-			ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services')->compile() => lang('services'),
+			ee('CP/URL')->make(EXT_SETTINGS_PATH ."/services")->compile() => lang('services'),
 		);
-		if ($this->current_service !== 'services'){ 
-				array_merge($breadcrumbs, array(
-					ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services/'.$this->current_service)->compile() => lang($this->current_service.'_name')
-					)
-			);
-		}
+		// if the current = the service detail page
+		if (!$this->current_service) array_pop($breadcrumbs);
+
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
 		
 		$vars['save_btn_text'] = 'btn_save_settings';
