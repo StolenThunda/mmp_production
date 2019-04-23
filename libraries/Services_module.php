@@ -45,7 +45,6 @@ class Services_module {
 		ee()->load->library('composer');
 		$this->debug = TRUE;
         $this->config = ee()->config->item(EXT_SHORT_NAME.'_settings');
-        // $this->config = ee()->config->item('manymailerplus_settings');
 		if(ee()->config->item('email_crlf') != false)
 		{
 			$this->email_crlf = ee()->config->item('email_crlf');
@@ -90,7 +89,6 @@ class Services_module {
 				$services_sorted[$service] = $service_settings;
 			}
 		}
-		// console_message($settings_info, __METHOD__);
 		$vars = array(
 			'debug' => $this->debug,
 			'current_service' => false,
@@ -99,9 +97,10 @@ class Services_module {
 			'ee_version' => $this->ee_version(),
 			'categories' => array_keys($this->sidebar_options),
 		);
+		if (ee()->uri->segment(6) !== ''){
+			$vars['current_service'] = $this->current_service =  ee()->uri->segment(6);
+		}
 		
-		$vars['current_service'] = $this->current_service = (ee()->uri->segment(6) == '') ? ee()->uri->segment(5) : ee()->uri->segment(6);
-
 		if(!empty($this->config))
 		{
 			$vars['form_vars']['extra_alerts'] = array('escort_config_warning');
@@ -117,52 +116,33 @@ class Services_module {
 			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
 			ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services')->compile() => lang('services'),
 		);
-		console_message($this->current_service, __METHOD__);
 		if ($this->current_service !== 'services'){ 
 				array_merge($breadcrumbs, array(
 					ee('CP/URL')->make(EXT_SETTINGS_PATH.'/services/'.$this->current_service)->compile() => lang($this->current_service.'_name')
 					)
 			);
 		}
-				
-		$vars = $this->_service_settings($vars);
+	
+
+		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
 		
+		$vars['save_btn_text'] = 'btn_save_settings';
+		$vars['save_btn_text_working'] = 'btn_saving';
+		$vars['sections'] = array();
+		if ($this->current_service) {
+			$vars = $this->_service_settings($vars);
+			$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
+		}else{
+			$vars['cp_page_title'] = lang('services');
+			$vars['current_action'] = 'services';
+			unset($vars['current_service']);
+		}	   
+		console_message($vars, __METHOD__);
 		return array(
 			'vars' => $vars,			
 			'bc' => $breadcrumbs,
 			);
 	}
-	
-	public static function getSettingsInfo($all_settings = []){
-		$settings = $this->get_settings();
-		
-		if(ee('Request')->isAjax() && $services = ee('Request')->post('service_order'))
-		{
-			$all_settings[$this->site_id]['service_order'] = explode(',', $services);
-			$this->model->settings = $all_settings;
-			$this->model->save();
-			exit();
-		}	
-		// Look at custom service order
-		foreach($settings['service_order'] as $service)
-		{
-			$services_sorted[$service] = $this->services[$service];
-		}
-
-		// Add any services were not included in the custom order
-		foreach($this->services as $service => $service_settings)
-		{
-			if(empty($services_sorted[$service]))
-			{
-				$services_sorted[$service] = $service_settings;
-			}
-		}
-		return array( 
-			'settings' => $settings,
-			'services_sorted' => $services_sorted
-		);
-	}
-
 	function save_settings()
 	{
 		$settings = $this->get_settings(true);
@@ -184,7 +164,7 @@ class Services_module {
 
 		$this->model->settings = $settings;
 		$this->model->save();
-		
+		console_message($current_service, __METHOD__);
 		ee('CP/Alert')->makeInline('shared-form')
 	      ->asSuccess()
 		  ->withTitle(lang('settings_saved'))
@@ -192,7 +172,7 @@ class Services_module {
 	      ->defer();
 	      
 	    ee()->functions->redirect(
-	    	ee('CP/URL')->make('addons/settings/'.EXT_SHORT_NAME.'/'.$current_service)
+	    	ee('CP/URL')->make('addons/settings/'.EXT_SHORT_NAME.'/services/'.$current_service)
 	    );
 	}
 
@@ -217,7 +197,7 @@ class Services_module {
 
 
 	private function _service_settings(&$vars){
-		// $this->dbg_msgs->addMsg("Active Link: ". implode('**ACTIVE**',$vars['active']));
+		console_message($this->current_service, __METHOD__);	
 		$sections = array(
 			array(
 				'title' => lang('description'),
@@ -225,7 +205,7 @@ class Services_module {
 					'description' => array(
 						'type' => 'html',
 						'content' => "<div class='".EXT_SHORT_NAME."-service-description'>".lang(''.$this->current_service.'_description').'</div>'),
-					$this->current_service.'_active' => array(
+						$this->current_service.'_active' => array(
 						'type' => 'inline_radio',
 						'choices' => array(
 							'y' => lang('enabled'),
@@ -252,19 +232,12 @@ class Services_module {
 				);
 			}
 		}
-		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/save');
-		$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
-		// $vars['cp_page_title'] = lang(''.end($vars['active']).'_name');
-		$vars['save_btn_text'] = 'btn_save_settings';
-		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array($sections);
-		// $this->current_service = 'services:'. end($vars['active']); 
 		return $vars;
 	}
 	
 	public function get_settings($all_sites = false)
 	{
-	
 		$all_settings = $this->model->settings;
 		$settings = ($all_sites == true || empty($all_settings)) ? $all_settings : $all_settings[$this->site_id];
                 

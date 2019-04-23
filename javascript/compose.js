@@ -1,4 +1,19 @@
 $(document).ready(function() {
+    var service_list = $('h2:contains("Services")').next('ul');
+    service_list
+        .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')
+        .addClass('service-list');
+    var active_services = $('#active_services').val();
+
+    $.each(service_list.children(), function() {
+        var list_item = $(this).text().toLowerCase();
+        if (active_services && active_services.indexOf(list_item) > -1) {
+            $(this).addClass('enabled-service');
+        } else {
+            $(this).addClass('disabled-service');
+        }
+        $(this).attr('data-service', list_item);
+    });
     $('.service-list').sortable({
         axis: 'y',
         opacity: 0.5,
@@ -324,7 +339,7 @@ function tokenizeKeys(data) {
 }
 
 function tokenizeKey(key) {
-    return '{{' + key.trim().toLowerCase().replace(' ', '_') + '}}';
+    return '*|' + key.trim().toLowerCase().replace(' ', '_') + '|*';
 }
 
 function showPlaceholders(headers) {
