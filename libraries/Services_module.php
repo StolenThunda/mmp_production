@@ -89,7 +89,6 @@ class Services_module {
 				$services_sorted[$service] = $service_settings;
 			}
 		}
-
 		$vars = array(
 			'debug' => $this->debug,
 			'current_service' => false,
@@ -98,9 +97,10 @@ class Services_module {
 			'ee_version' => $this->ee_version(),
 			'categories' => array_keys($this->sidebar_options),
 		);
+		if (ee()->uri->segment(6) !== ''){
+			$vars['current_service'] = $this->current_service =  ee()->uri->segment(6);
+		}
 		
-		$vars['current_service'] = $this->current_service = (ee()->uri->segment(6) == '') ? ee()->uri->segment(5) : ee()->uri->segment(6);
-
 		if(!empty($this->config))
 		{
 			$vars['form_vars']['extra_alerts'] = array('escort_config_warning');
@@ -122,15 +122,26 @@ class Services_module {
 					)
 			);
 		}
-				
-		$vars = $this->_service_settings($vars);
+		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
+		
+		$vars['save_btn_text'] = 'btn_save_settings';
+		$vars['save_btn_text_working'] = 'btn_saving';
+		$vars['sections'] = array();
+		if ($this->current_service) {
+			$vars = $this->_service_settings($vars);
+			$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
+		}else{
+			$vars['cp_page_title'] = lang('services');
+			$vars['current_action'] = 'services';
+			unset($vars['current_service']);
+		}	   
 		console_message($vars, __METHOD__);
 		return array(
 			'vars' => $vars,			
 			'bc' => $breadcrumbs,
 			);
 	}
-	
+
 	function save_settings()
 	{
 		$settings = $this->get_settings(true);
@@ -220,10 +231,6 @@ class Services_module {
 				);
 			}
 		}
-		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
-		$vars['cp_page_title'] = lang(''.$this->current_service.'_name');
-		$vars['save_btn_text'] = 'btn_save_settings';
-		$vars['save_btn_text_working'] = 'btn_saving';
 		$vars['sections'] = array($sections);
 		return $vars;
 	}

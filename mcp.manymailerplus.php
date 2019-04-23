@@ -1,13 +1,12 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 use EllisLab\ExpressionEngine\Library\CP\Table;
+use EllisLab\ExpressionEngine\Library\CP\Table;
 use EllisLab\ExpressionEngine\Model\Email\EmailCache;
-// use	manymailerplus\Model\ as EmailCache;
 use EllisLab\ExpressionEngine\View;
 
 class Manymailerplus_mcp 
 {
-
 	private $version = EXT_VERSION;
 	private $attachments = array();
 	private $csv_lookup = array();
@@ -41,6 +40,7 @@ class Manymailerplus_mcp
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
 		$this->sidebar_options = ee()->config->item('options', 'sidebar');
 		$this->_update_sidebar_options(array_keys($this->services));
+
 		if (!$this->sidebar_loaded)
 		{
 			//render page to show errors
@@ -123,23 +123,36 @@ class Manymailerplus_mcp
 
 	function services($func = ""){
 		switch ($func) {
-			case 'save':
-				ee()->mail_svc->save_settings();
+			case 'list':
+				# code...
+				return ee()->mail_svc->get_settings();
 				break;
-			case '':
+			case 'save':
+				return ee()->mail_svc->save_settings();
+				break;
 			default:
+				# code...
 				$service_vars =  ee()->mail_svc->settings_form(array());
-				$vars = $service_vars['vars'];
-				$this->_update_sidebar_options(array_keys($vars['services']) );
-				$vars['sidebar_options'] = $this->sidebar_options;
-				console_message($vars, __METHOD__);
-				return array(
-					'body' => ee('View')->make(EXT_SHORT_NAME.':settings')->render($vars),
-					$service_vars['bc'],
-					'heading' => $vars['cp_page_title']
-				);
+				
 				break;
 		}
+		
+		$vars = $service_vars['vars'];
+		$active_services = array_filter($vars['current_settings'], function($v, $k){
+			return $v == 'y';
+		}, ARRAY_FILTER_USE_BOTH); 
+		$acts = array_map(function($k){
+			return explode('_', $k)[0];
+		}, array_keys($active_services));
+		$vars['active_service_names'] = json_encode($acts);
+		$vars['sidebar'] = $this->sidebar_options;		
+		$this->_update_sidebar_options(array_keys($vars['services']) );
+		console_message($vars, __METHOD__);
+		return array(
+			'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+			'breadcrumbs' => $service_vars['bc'],
+			'heading' => $vars['cp_page_title']
+		);
 	}
 	
 	function _update_sidebar_options($additional_links = array())
@@ -576,18 +589,6 @@ class Manymailerplus_mcp
 		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
 
-		// //  Send a single email
-		// if (count($groups) == 0)
-		// {
-		// 	console_message("Sending one", __METHOD__);
-		// 	$debug_msg = $this->deliverOneEmail($email, $recipient);
-		// 	console_message($debug_msg, __METHOD__);
-		// 	ee()->view->set_message('success', lang('email_sent_message'), $debug_msg, TRUE);
-		// 	ee()->functions->redirect(
-		// 		ee('CP/URL',EXT_SETTINGS_PATH.'/email:compose')
-		// 	);
-		// }
-
 		// Get member group emails
 		$member_groups = ee('Model')->get('MemberGroup', $groups)
 			->with('Members')
@@ -866,8 +867,8 @@ class Manymailerplus_mcp
 				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
 				console_message($record, __METHOD__);
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
-				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
-				// $to = $record['{{email}}']; 
+				$to = "{$record['*|first_name|*']} {$record['*|last_name|*']}  <{$record['*|email|*']}>"; 
+				// $to = $record['*|email|*']; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -1081,7 +1082,6 @@ class Manymailerplus_mcp
 			->limit(20)
 			->offset($offset)
 			->all();
-		// $emails = $emails->all();
 		
 		$vars['emails'] = array();
 		$data = array();
