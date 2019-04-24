@@ -38,6 +38,17 @@ Any errors validate the data are prominently displayed along with suggestions fo
 
 ![CSV Result](./images/csv_result.png)
 
+##### Services Enhancement
+
+Thanks to ***Derek Hogue*** @ **[Amphibian Design](https://www.sparkpost.com/)**, ManyMailerPlus has the ability to send mail via the web api's of the following transactional email services:
+
+- [Mandrill](https://mandrillapp.com/api/docs/messages.JSON.html)
+- [Mailgun](https://www.mailgun.com/)
+- [PostageApp](https://postageapp.com/)
+- [PostMark](https://postmarkapp.com/)
+- [SendGrid](https://sendgrid.com/)
+- [SparkPost](https://www.sparkpost.com/)
+
 ### Required Columns
 
 #### Email Column

@@ -11,7 +11,8 @@
 			<div class="app-notice-wrap"><?=ee('CP/Alert')->getAllInlines()?></div>
 		<?php endif; ?>
 
-		<?php if($is_category) : ?>
+		<?php //if($is_category) : ?>
+		<?php if (isset($current_action)) : ?>
 				<h1><?= lang($current_action.'_heading'); ?></h1>
 				<div class="txt-wrap">
 					<?=lang($current_action .'_text')?>

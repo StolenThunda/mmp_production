@@ -106,7 +106,6 @@ class Manymailerplus_mcp
 			case 'compose':
 			case 'send':
 			case 'sent':
-				// return $this->{$func}();
 				$vars = ee()->mail_funcs->{$func}();
 				break;
 			case 'resend':
@@ -114,8 +113,6 @@ class Manymailerplus_mcp
 				$id = ee()->uri->segment(7, 0);
 				return ee()->mail_funcs->{$func}($id);
 				break;
-				// return $this->resend($id);
-				// break;
 			default:
 				array_pop($breadcrumbs);
 				$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/email');

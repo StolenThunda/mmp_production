@@ -130,7 +130,7 @@ function resetRecipients(all) {
         file_recip.unwrap();
     }
     // reset emails and errors
-    $('input[name=recipient').val('');
+    $('input[name=recipient]').val('');
     $('#csv_errors').html('');
 
     // reset recipient label

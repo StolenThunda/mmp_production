@@ -17,7 +17,7 @@
     Read the terms of the GNU General Public License
     at <http://www.gnu.org/licenses/>.
     
-    Copyright 2013-2016 Derek Hogue - http://amphibian.info
+    Copyright 2019 Antonio Moses - http://texasbluesalley.com
 */
 
 require_once(PATH_THIRD.EXT_SHORT_NAME.'/config.php');
@@ -103,11 +103,11 @@ class Services_module {
 		
 		if(!empty($this->config))
 		{
-			$vars['form_vars']['extra_alerts'] = array('escort_config_warning');
-			ee('CP/Alert')->makeInline('escort_config_warning')
+			$vars['form_vars']['extra_alerts'] = array('config_warning');
+			ee('CP/Alert')->makeInline('config_warning')
 				->asWarning()
-				->withTitle(lang('escort_config_warning_heading'))
-				->addToBody(lang('escort_config_warning_text'))
+				->withTitle(lang('config_warning_heading'))
+				->addToBody(lang('config_warning_text'))
 				->cannotClose()
 				->now();
 		}
@@ -266,6 +266,7 @@ class Services_module {
 	function email_send($data)
 	{	
 		$settings = $this->get_settings();
+		console_message($settings, __METHOD__);
 		if(empty($settings['service_order']))
 		{
 			return false;
@@ -353,17 +354,17 @@ class Services_module {
 		// Set HTML/Text and attachments
 		// $this->_body_and_attachments();
 		$this->email_out['html'] = $this->email_in['html'];
-		console_message($this->email_in, __METHOD__);
+		
 		
 		if($this->debug == true)
 		{
 			console_message($this->email_out);
 		}
 			
-		// foreach($settings['service_order'] as $service)
-		// {
-			// if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
-			// {
+		foreach($settings['service_order'] as $service)
+		{
+			if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
+			{
 				$missing_credentials = true;
 				$service = 'mandrill';
 				switch($service)
@@ -376,10 +377,12 @@ class Services_module {
 						}
 						break;				
 					case 'mandrill':
-						if(!empty($this->services[$service]['mandrill_api_key']))
+						console_message($settings['mandrill_api_key'], __METHOD__);
+						if(!empty($settings['mandrill_api_key']))
 						{
-							$subaccount = (!empty($this->services[$service]['mandrill_subaccount']) ? $this->services[$service]['mandrill_subaccount'] : '');
-							$sent = $this->_send_mandrill($this->services[$service]['mandrill_api_key'], $subaccount);
+							
+							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
+							$sent = $this->_send_mandrill($settings['mandrill_api_key'], $subaccount);
 							$missing_credentials = false;
 						}
 						break;
@@ -421,14 +424,14 @@ class Services_module {
 				{
 					ee()->logger->developer(sprintf(lang('could_not_deliver'), $service));
 				}
-			// }
+			}
 			
 			if($sent == true)
 			{
 				ee()->extensions->end_script = true;
 				return true;
 			}		
-		// }
+		}
 		
 		return false;
 				  
@@ -445,7 +448,7 @@ class Services_module {
 			'key' => $api_key,
 			'message' => $this->email_out
 		);
-		
+		console_message($content, __METHOD__);
 		if(!empty($subaccount))
 		{
 			$content['message']['subaccount'] = $subaccount;
