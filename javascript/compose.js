@@ -1,4 +1,59 @@
 $(document).ready(function() {
+    // Set caret position easily in jQuery
+    // Written by and Copyright of Luke Morton, 2011
+    // Licensed under MIT
+    (function($) {
+        // Behind the scenes method deals with browser
+        // idiosyncrasies and such
+        $.caretTo = function(el, index) {
+            if (el.createTextRange) {
+                var range = el.createTextRange();
+                range.move("character", index);
+                range.select();
+            } else if (el.selectionStart != null) {
+                el.focus();
+                el.setSelectionRange(index, index);
+            }
+        };
+
+        // The following methods are queued under fx for more
+        // flexibility when combining with $.fn.delay() and
+        // jQuery effects.
+
+        // Set caret to a particular index
+        $.fn.caretTo = function(index, offset) {
+            return this.queue(function(next) {
+                if (isNaN(index)) {
+                    var i = $(this).val().indexOf(index);
+                    if (i == -1) i = $(this).text().indexOf(index);
+                    if (offset === true) {
+                        i += index.length;
+                    } else if (offset) {
+                        i += offset;
+                    }
+
+                    $.caretTo(this, i);
+                } else {
+                    $.caretTo(this, index);
+                }
+
+                next();
+            });
+        };
+
+        // Set caret to beginning of an element
+        $.fn.caretToStart = function() {
+            return this.caretTo(0);
+        };
+
+        // Set caret to the end of an element
+        $.fn.caretToEnd = function() {
+            return this.queue(function(next) {
+                $.caretTo(this, $(this).val().length);
+                next();
+            });
+        };
+    }(jQuery));
     var service_list = $('h2:contains("Services")').next('ul');
     service_list
         .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')
@@ -342,7 +397,7 @@ function tokenizeKeys(data) {
 }
 
 function tokenizeKey(key) {
-    return '*|' + key.trim().toLowerCase().replace(' ', '_') + '|*';
+    return '{{' + key.trim().toLowerCase().replace(' ', '_') + '}}';
 }
 
 function showPlaceholders(headers) {
@@ -370,11 +425,15 @@ function showPlaceholders(headers) {
                     // Insert text into textarea at cursor position and replace selected text
                     var cursorPosStart = message.prop('selectionStart');
                     var cursorPosEnd = message.prop('selectionEnd');
+                    var insertedText = $(this).text();
                     var v = message.val();
                     var textBefore = v.substring(0, cursorPosStart);
                     var textAfter = v.substring(cursorPosEnd, v.length);
-                    message.val(textBefore + $(this).text() + textAfter);
-                    message.focus();
+                    message.val(textBefore + insertedText + textAfter);
+                    $(this).caretTo(insertedText, true);
+                    // cursorPosEnd = cursorPosEnd + insertedText.length;
+                    // message.focus();
+                    // message.setSelectionRange(cursorPosEnd, cursorPosEnd);
                 }
             })
             .wrap('<tr><td align="center"></td></tr>')

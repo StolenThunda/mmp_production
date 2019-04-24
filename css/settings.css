@@ -36,9 +36,9 @@
     }
     
     #placeholder {
-        position: -webkit-sticky;
-        position: sticky;
-        top: 4rem;
+        position: -webkit-sticky !important;
+        position: sticky !important;
+        top: 4rem !important;
     }
     
     .placeholder:hover {
@@ -60,9 +60,9 @@
     }
     
     .stick-here {
-        display: flex;
-        justify-content: space-around;
-        align-items: flex-start;
+        /* display: flex !important;
+        justify-content: space-around !important;
+        align-items: flex-start !important; */
     }
     
     span>ul {

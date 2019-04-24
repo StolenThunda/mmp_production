@@ -216,16 +216,55 @@ class Services_module {
 		if (array_key_exists($this->current_service, $vars['services'])){
 			foreach($vars['services'][$this->current_service] as $field_name)
 			{
-				$sections[] = array(
-					'title' => lang(''.$field_name),
-					'desc' => ($field_name == 'mandrill_subaccount') ? lang('optional') : '',
-					'fields' => array(
-						$field_name => array(
-							'type' => 'text',
-							'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
+				// console_message($field_name, __METHOD__);
+				// if (is_array($field_name)){
+				// 	foreach ($field_name as $key => $value) {
+				// 		# code...
+				// 		switch ($value) {
+				// 			case 'checkbox':
+				// 			case 'inline_radio':
+				// 				$field = array(
+				// 					$key => array(
+				// 						'type' => 'inline_radio',
+				// 						'choices' => array(
+				// 							'y' => lang('enabled'),
+				// 							'n' => lang('disabled')
+				// 						),
+				// 						'value' => (!empty($field_name['value']) && $field_name['value'] == 'y') ? 'y' : 'n'
+				// 					)
+				// 				);
+				// 			default:
+				// 				# code...
+				// 				$field = array(
+				// 					$field_name = array(
+				// 						'type' => $value,
+				// 						'value' => (!empty($field_name['value'])) ? $field_name['value'] : '',
+				// 					)
+				// 				);
+				// 				break;
+				// 		}
+
+				// 		$sections[] = array(
+				// 			'title' => lang(''.$key),
+				// 			'desc' =>  '',
+				// 			'fields' => array(
+				// 				$key => $field
+				// 			)
+				// 		);
+						
+				// 	}
+				// }else{
+					$sections[] = array(
+						'title' => lang(''.$field_name),
+						'desc' => ($field_name == 'mandrill_test_api_key' || $field_name == 'mandrill_subaccount') ? lang('optional') : '',
+						'fields' => array(
+							$field_name => array(
+								'type' => 'text',
+								'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
+							)
 						)
-					)
-				);
+					);
+				// }
 			}
 		}
 		$vars['sections'] = array($sections);
@@ -235,6 +274,7 @@ class Services_module {
 	public function get_settings($all_sites = false)
 	{
 		$all_settings = $this->model->settings;
+		console_message($this->site_id, __METHOD__);
 		$settings = ($all_sites == true || empty($all_settings)) ? $all_settings : $all_settings[$this->site_id];
                 
         // Check for config settings - they will override database settings
@@ -363,10 +403,12 @@ class Services_module {
 			
 		foreach($settings['service_order'] as $service)
 		{
+			console_message($service, __METHOD__);
+			console_message($settings, __METHOD__);
 			if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
 			{
 				$missing_credentials = true;
-				$service = 'mandrill';
+				console_message($service, __METHOD__);
 				switch($service)
 				{
 					case 'mailgun':
@@ -377,12 +419,15 @@ class Services_module {
 						}
 						break;				
 					case 'mandrill':
-						console_message($settings['mandrill_api_key'], __METHOD__);
-						if(!empty($settings['mandrill_api_key']))
-						{
-							
+						$key = (!empty($settings['mandrill_api_key'])) ? $settings['mandrill_api_key'] : "";
+						if (!empty($settings['mandrill_test_api_key']) && $key == ""){
+							$key = $settings['mandrill_test_api_key'];
+							ee()->logger->developer(sprintf(lang('using_alt_credentials'), $service, $key));
+							console_message('Using Mandrill Test API Key', __METHOD__);
+						}
+						if($key == ""){
 							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
-							$sent = $this->_send_mandrill($settings['mandrill_api_key'], $subaccount);
+							$sent = $this->_send_mandrill($key, $subaccount);
 							$missing_credentials = false;
 						}
 						break;
@@ -446,6 +491,7 @@ class Services_module {
 	{
 		$content = array(
 			'key' => $api_key,
+			'async' => TRUE,
 			'message' => $this->email_out
 		);
 		console_message($content, __METHOD__);

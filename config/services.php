@@ -3,6 +3,10 @@
         'services' => array(
 			'mandrill' => array(
 				'mandrill_api_key',
+				// 'mandrill_options' => array(
+				// 	'mandrill_use_test_key' =>  'checkbox'
+				// ), 
+				'mandrill_test_api_key',
 				'mandrill_subaccount'
 			),
 			'mailgun' => array(
