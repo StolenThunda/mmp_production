@@ -40,7 +40,7 @@ class Composer {
 		foreach($external_js as $script){
 			ee()->cp->add_to_foot($script);
 		}
-
+		$this->debug = FALSE;
 	}
 
 	/**
@@ -50,6 +50,7 @@ class Composer {
 	 */
 	public function compose(EmailCache $email = NULL)
 	{
+		console_message(ee()->session->userdata('location'), __METHOD__);
 		$default = array(
 			'from'		 	=> ee()->session->userdata('email'),
 			'recipient'  	=> '',
@@ -560,8 +561,8 @@ class Composer {
 		}
 
 		/** ----------------------------------------
-		/**  Start Batch-Mode
-		/** ----------------------------------------*/
+		**  Start Batch-Mode
+		** ----------------------------------------*/
 
 			// ee()->functions->redirect(ee('CP/URL',EXT_SETTINGS_PATH.'/'.EXT_SHORT_NAME.'/email:compose'));
 		ee()->view->set_refresh(ee('CP/URL',EXT_SETTINGS_PATH.'/email/batch/' . $email->cache_id)->compile(), 6, TRUE);
@@ -688,8 +689,7 @@ class Composer {
 
 		if ($error == TRUE)
 		{
-			$email->delete();
-			show_error(__METHOD__. ' '. lang('error_sending_email').BR.BR.$debug_msg);
+			$this->_removeMail($email);
 		}
 
 		$total_sent = 0;
@@ -743,12 +743,12 @@ class Composer {
 				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
-				$tmp_message = strtr($email->message, $record);
+				// $tmp_message = strtr($email->message, $record);
 				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
 				console_message($record, __METHOD__);
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
 				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
-				// $to = $record['{{email}}']; 
+				// $to = $record[$this->csv_email_column]; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -775,14 +775,16 @@ class Composer {
 					'parse_images'	=> FALSE,
 					'parse_smileys'	=> FALSE
 				));
-	
+				$cache_data['text'] = $email->message;
+				$cache_data['lookup'] = $record;
 				$cache_data['html'] = ee()->typography->parse_type($cache_data['message'], array(
 					'text_format'    => ($email->text_fmt == 'markdown') ? 'markdown' : 'xhtml',
 					'html_format'    => 'all',
 					'auto_links'	 => 'n',
 					'allow_img_url'  => 'y'
 				));
-				if (ee()->mail_svc->email_send($cache_data)){
+				console_message($cache_data, __METHOD__);
+				if ($this->email_send($cache_data)){
 					$singleEmail->total_sent++;
 					$singleEmail->save();	
 				}else{
@@ -802,7 +804,7 @@ private function _removeMail(EmailCache $email){
 		$email->delete();
 
 		$debug_msg = ee()->email->print_debugger(array());
-
+		console_message($debug_msg, __METHOD__);
 		show_error(lang('error_sending_email').BR.BR.$debug_msg);
 	}
 
@@ -891,6 +893,600 @@ private function _removeMail(EmailCache $email){
 		}
 
 		return $subject;
+	}
+
+	function email_send($data)
+	{	
+		$settings = ee()->mail_svc->get_settings();
+		$str_settings = json_encode(json_decode(json_encode($settings, JSON_PRETTY_PRINT)));
+		if(empty($settings['service_order']))
+		{
+			return false;
+		}
+		
+		ee()->lang->loadfile(EXT_SHORT_NAME);
+		ee()->load->library('logger');
+		
+		$sent = false;
+		$this->email_in = $data;
+		unset($data);
+
+		$this->email_out['lookup'] =  $this->email_in['lookup'];
+		
+		$this->email_in['finalbody'] = $this->email_in['message'];
+		
+		$this->email_out['text'] = $this->email_in['text'];
+
+		
+		if($this->debug == true)
+		{
+			console_message($this->email_in);
+		}
+		
+		// Set X-Mailer
+		$this->email_out['headers']['X-Mailer'] = APP_NAME .' (via '. EXT_NAME . ' ' . EXT_VERSION .')';
+
+		// From (may include a name)
+		$this->email_out['from'] = array(
+			'name' 	=> $this->email_in['from_name']	,  
+			'email' 	=> $this->email_in['from_email']	
+		);  
+		
+		// Reply-To (may include a name)
+		if(!empty($this->email_in['headers']['Reply-To']))
+		{
+			$this->email_out['reply-to'] = $this->_name_and_email($this->email_in['headers']['Reply-To']);
+		}
+		
+		// To (email-only)
+		$this->email_out['to'] = array($this->email_in['recipient']);
+		
+		// Cc (email-only)
+		if(!empty($this->email_in['cc_array']))
+		{
+			$this->email_out['cc'] = array();
+			foreach($this->email_in['cc_array'] as $cc_email)
+			{
+				if(!empty($cc_email))
+				{
+					$this->email_out['cc'][] = $cc_email;
+				}
+			}
+		}
+		elseif(!empty($this->email_in['cc']))
+		{
+			$this->email_out['cc'] = $this->email_in['cc'];
+		}
+
+		// Bcc (email-only)
+		if(!empty($this->email_in['bcc_array']))
+		{
+			$this->email_out['bcc'] = array();
+			foreach($this->email_in['bcc_array'] as $bcc_email)
+			{
+				if(!empty($bcc_email))
+				{
+					$this->email_out['bcc'][] = $bcc_email;
+				}
+			}
+		}
+		elseif(!empty($this->email_in['headers']['Bcc']))
+		{
+			$this->email_out['bcc'] = $this->_recipient_array($this->email_in['headers']['Bcc']);
+		}
+		
+		// Subject	
+		$subject = '';
+		if(!empty($this->email_in['subject']))
+		{
+			$subject = $this->email_in['subject'];
+		}
+		elseif(!empty($this->email_in['headers']['Subject']))
+		{
+			$subject = $this->email_in['headers']['Subject'];
+		}
+		$this->email_out['subject'] = (strpos($subject, '?Q?') !== false) ? $this->_decode_q($subject) : $subject;
+		
+		
+		// Set HTML/Text and attachments
+		// $this->_body_and_attachments();
+		$this->email_out['html'] = $this->email_in['html'];
+		
+		if($this->debug == true)
+		{
+			console_message($this->email_out);
+		}		
+
+		foreach($settings['service_order'] as $service)
+		{
+			// console_message($service, __METHOD__);
+			if(!empty($settings[$service.'_active']) && $settings[$service.'_active'] == 'y')
+			{
+				$missing_credentials = true;
+				console_message($service, __METHOD__);
+				switch($service)
+				{
+					case 'mailgun':
+						if(!empty($settings['mailgun_api_key']) && !empty($settings['mailgun_domain']))
+						{
+							$sent = $this->_send_mailgun($settings['mailgun_api_key'], $settings['mailgun_domain']);
+							$missing_credentials = false;
+						}
+						break;				
+					case 'mandrill':
+						$key = (!empty($settings['mandrill_api_key'])) ? $settings['mandrill_api_key'] : "";
+						$log_message = sprintf(lang('using_alt_credentials'), $service, $key, $str_settings);
+						$key = "";
+						if (!empty($settings['mandrill_test_api_key']) && $key == ""){
+							$key = $settings['mandrill_test_api_key'];
+							ee()->logger->developer($log_message);
+						}
+						if($key !== ""){
+							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
+							$sent = $this->_send_mandrill($key, $subaccount);
+							console_message($log_message, __METHOD__);
+							ee()->session->set_flashdata(array('message_error' => $log_message));
+							$missing_credentials = false;
+						}
+						break;
+					case 'postageapp':
+						if(!empty($settings['postageapp_api_key']))
+						{
+							$sent = $this->_send_postageapp($settings['postageapp_api_key']);
+							$missing_credentials = false;
+						}						
+						break;	
+					case 'postmark':
+						if(!empty($settings['postmark_api_key']))
+						{
+							$sent = $this->_send_postmark($settings['postmark_api_key']);
+							$missing_credentials = false;
+						}						
+						break;				
+					case 'sendgrid':
+						if(!empty($settings['sendgrid_api_key']))
+						{
+							$sent = $this->_send_sendgrid($settings['sendgrid_api_key']);
+							$missing_credentials = false;
+						}
+						break;
+					case 'sparkpost':
+						if(!empty($settings['sparkpost_api_key']))
+						{
+							$sent = $this->_send_sparkpost($settings['sparkpost_api_key']);
+							$missing_credentials = false;
+						}
+						break;
+				}
+				
+				if($missing_credentials == true)
+				{
+					ee()->logger->developer(sprintf(lang('missing_service_credentials'), $service));
+				}
+				elseif($sent == false)
+				{
+					ee()->logger->developer(sprintf(lang('could_not_deliver'), $service));
+				}
+			}
+			
+			if($sent == true)
+			{
+				ee()->extensions->end_script = true;
+				return true;
+			}		
+		}
+		
+		return false;
+				  
+	}
+	
+	
+	/**
+		Sending methods for each of our services follow.
+	**/
+
+	function _send_mandrill($api_key, $subaccount)
+	{
+		$content = array(
+			'key' => $api_key,
+			'async' => TRUE,
+			'message' => $this->email_out
+		);
+		console_message($content, __METHOD__);
+		if(!empty($subaccount))
+		{
+			$content['message']['subaccount'] = $subaccount;
+		}
+		
+		$content['message']['from_email'] = $content['message']['from']['email'];
+		if(!empty($content['message']['from']['name']))
+		{
+			$content['message']['from_name'] = $content['message']['from']['name'];
+		}
+		unset($content['message']['from']);
+		
+		$mandrill_to = array('email' => $content['message']['to']);
+		foreach($content['message']['to'] as $to)
+		{
+			$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'to'));
+		}
+		
+		if(!empty($content['message']['cc']))
+		{
+			foreach($content['message']['cc'] as $to)
+			{
+				$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'cc'));
+			}
+			unset($content['message']['cc']);
+		}
+				
+		if(!empty($content['message']['reply-to']))
+		{
+			$content['message']['headers']['Reply-To'] = $this->_recipient_str($content['message']['reply-to'], true);
+		}
+		unset($content['message']['reply-to']);
+
+		
+		if(!empty($content['message']['bcc']))
+		{
+			foreach($content['message']['bcc'] as $to)
+			{
+				$mandrill_to[] = array_merge($this->_name_and_email($to), array('type' => 'bcc'));
+			}
+		}
+		unset($content['message']['bcc']);
+		
+		$content['message']['to'] = $mandrill_to;
+
+		$content['message']['merge_language'] = 'handlebars';
+
+		$content['message']['track_opens'] = TRUE;
+
+		$content['message']['tags'] = array(EXT_NAME . " " . EXT_VERSION);
+
+		$content['message']['auto_html'] = TRUE;
+
+		$merge_vars = array(
+			array(
+				'rcpt' => $content['message']['to'][0]['email'],
+				'vars' => $this->_mandrill_lookup_to_merge($content['message']['lookup'])
+			)
+		);
+		unset($content['message']['lookup']);
+
+		$content['message']['merge_vars'] = $merge_vars;
+						
+		$headers = array(
+	    	'Accept: application/json',
+			'Content-Type: application/json',
+		);
+		
+		if(ee()->extensions->active_hook('pre_send'))
+		{
+			$content = ee()->extensions->call('pre_send', 'mandrill', $content);
+		}
+		
+		// Did someone set a template? Then we need a different API method.
+		$method = (!empty($content['template_name']) && !empty($content['template_content'])) ? 'send-template' : 'send';
+		$content = json_encode($content);
+				
+		console_message($content,__METHOD__);	
+
+		return $this->_curl_request('https://mandrillapp.com/api/1.0/messages/'.$method.'.json', $headers, $content);
+	}
+	
+	function _mandrill_lookup_to_merge($lookup){
+		$merge_vars = array();
+		foreach(array_keys($lookup) as $key){
+			$merge_vars[] = array(
+				'name' => str_replace(array('{{','}}'), '', $key),
+				'content' => $lookup[$key]
+			);
+		}
+		return $merge_vars;
+	}	
+	
+	/**
+		Ultimately sends the email to each server.
+	**/	
+	function _curl_request($server, $headers = array(), $content, $htpw = null)
+	{	
+		$ch = curl_init($server);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_POST, 1);
+	    // Convert @ fields to CURLFile if available
+	    if(is_array($content) && class_exists('CURLFile'))
+	    {
+		    foreach($content as $key => $value)
+		    {
+		        if(strpos($value, '@') === 0)
+		        {
+		            $filename = ltrim($value, '@');
+		            $content[$key] = new CURLFile($filename);
+		        }
+		    }
+		}
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $content);
+		if(!empty($headers))
+		{
+			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		}
+		if(!empty($htpw))
+		{
+			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+			curl_setopt($ch, CURLOPT_USERPWD, $htpw);
+		}
+		
+		$status = curl_exec($ch);
+		console_message($status,__METHOD__);
+		$curl_error = curl_error($ch);
+		console_message($curl_error,__METHOD__);
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		curl_close($ch);
+		
+		return ($http_code != 200) ? false : true;
+	}	
+	
+
+	/**
+		Remove the Q encoding from our subject line
+	**/
+	function _decode_q($subject)
+	{
+	    $r = '';
+	    $lines = preg_split('/['.$this->email_crlf.']+/', $subject); // split multi-line subjects
+		foreach($lines as $line)
+	    { 
+	        $str = '';
+	        // $line = str_replace('=9', '', $line); // Replace encoded tabs which ratch the decoding
+	        $parts = imap_mime_header_decode(trim($line)); // split and decode by charset
+	        foreach($parts as $part)
+	        {
+	            $str .= $part->text; // append sub-parts of line together
+	        }
+	        $r .= $str; // append to whole subject
+	    }
+	    
+	    return $r;
+	    // return utf8_encode($r);
+	}
+	
+	
+	/**
+		Breaks the PITA MIME message we receive into its constituent parts
+	**/
+	function _body_and_attachments()
+	{
+		console_message($this->protocol, __METHOD__);
+		if($this->protocol == 'mail')
+		{
+			// The 'mail' protocol sets Content-Type in the headers
+			if(strpos($this->email_in['header_str'], "Content-Type: text/plain") !== false)
+			{	
+				$this->email_out['text'] = $this->email_in['finalbody'];
+			}
+			elseif(strpos($this->email_in['header_str'], "Content-Type: text/html") !== false)
+			{
+				$this->email_out['html'] = $this->email_in['finalbody'];
+			}
+			else
+			{
+				preg_match('/Content-Type: multipart\/[^;]+;\s*boundary="([^"]+)"/i', $this->email_in['header_str'], $matches);
+			}
+		}	
+		else
+		{
+			// SMTP and sendmail will set Content-Type in the body
+			if(stripos($this->email_in['finalbody'], "Content-Type: text/plain") === 0)
+			{	
+				$this->email_out['text'] = $this->_clean_chunk($this->email_in['finalbody']);
+			}
+			elseif(stripos($this->email_in['finalbody'], "Content-Type: text/html") === 0)
+			{
+				$this->email_out['html'] = $this->_clean_chunk($this->email_in['finalbody']);
+			}
+			else
+			{
+				preg_match('/^Content-Type: multipart\/[^;]+;\s*boundary="([^"]+)"/i', $this->email_in['finalbody'], $matches);
+			}
+		}	
+		
+		// Extract content and attachments from multipart messages
+		if(!empty($matches) && !empty($matches[1]))
+		{
+			$boundary = $matches[1];
+			$chunks = explode('--' . $boundary, $this->email_in['finalbody']);
+			foreach($chunks as $chunk)
+			{
+				if(stristr($chunk, "Content-Type: text/plain") !== false)
+				{
+					$this->email_out['text'] = $this->_clean_chunk($chunk);
+				}
+				
+				if(stristr($chunk, "Content-Type: text/html") !== false)
+				{
+					$this->email_out['html'] = $this->_clean_chunk($chunk);
+				}
+				
+				// Attachments
+				if(stristr($chunk, "Content-Disposition: attachment") !== false)
+				{
+					preg_match('/Content-Type: (.*?); name=["|\'](.*?)["|\']/is', $chunk, $attachment_matches);
+					if(!empty($attachment_matches))
+					{
+						if(!empty($attachment_matches[1]))
+						{
+							$type = $attachment_matches[1];
+						}
+						if(!empty($attachment_matches[2]))
+						{
+							$name = $attachment_matches[2];
+						}
+						$attachment = array(
+							'type' => trim($type),
+							'name' => trim($name),
+							'content' => $this->_clean_chunk($chunk)
+						);
+						$this->email_out['attachments'][] = $attachment;
+					}
+				}
+				
+				if(stristr($chunk, "Content-Type: multipart") !== false)
+				{
+					// Another multipart chunk - contains the HTML and Text messages, here because we also have attachments
+					preg_match('/Content-Type: multipart\/[^;]+;\s*boundary="([^"]+)"/i', $chunk, $inner_matches);
+					if(!empty($inner_matches) && !empty($inner_matches[1]))
+					{
+						$inner_boundary = $inner_matches[1];
+						$inner_chunks = explode('--' . $inner_boundary, $chunk);
+						foreach($inner_chunks as $inner_chunk)
+						{
+							if(stristr($inner_chunk, "Content-Type: text/plain") !== false)
+							{
+								$this->email_out['text'] = $this->_clean_chunk($inner_chunk);
+							}
+							
+							if(stristr($inner_chunk, "Content-Type: text/html") !== false)
+							{
+								$this->email_out['html'] = $this->_clean_chunk($inner_chunk);
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		if(!empty($this->email_out['html']))
+		{
+			// HTML emails will have been run through quoted_printable_encode
+			$this->email_out['html'] = quoted_printable_decode($this->email_out['html']);
+		}
+	}
+	
+
+	/**
+		Explodes a string which contains either a name and email address or just an email address into an array
+	**/
+	function _name_and_email($str)
+	{
+		$r = array(
+			'name' => '',
+			'email' => ''
+		);
+		
+		$str = str_replace('"', '', $str);
+		if(preg_match('/<([^>]+)>/', $str, $email_matches))
+		{
+			$r['email'] = trim($email_matches[1]);
+			$str = trim(preg_replace('/<([^>]+)>/', '', $str));
+			if(!empty($str) && $str != $r['email'])
+			{
+				$r['name'] = utf8_encode($str);
+			}
+		}
+		else
+		{
+			$r['email'] = trim($str);
+		}
+		return $r;
+	}
+	
+	/**
+		Explodes a comma-delimited string of email addresses into an array
+	**/	
+	function _recipient_array($recipient_str)
+	{
+		$recipients = explode(',', $recipient_str);
+		$r = array();
+		foreach($recipients as $recipient)
+		{
+			$r[] = trim($recipient);
+		}
+		return $r;
+	}
+	
+	/**
+		Implodes an array of email addresses and names into a comma-delimited string
+	**/		
+	function _recipient_str($recipient_array, $singular = false)
+	{
+		if($singular == true)
+		{
+			if(empty($recipient_array['name']))
+			{
+				return $recipient_array['email'];
+			}
+			else
+			{
+				return $recipient_array['name'].' <'.$recipient_array['email'].'>';
+			}
+		}
+		$r = array();
+		foreach($recipient_array as $k => $recipient)
+		{
+			if(!is_array($recipient))
+			{
+				$r[] = $recipient;
+			}
+			else
+			{
+				if(empty($recipient['name']))
+				{
+					$r[] = $recipient['email'];
+				}
+				else
+				{
+					$r[] = $recipient['name'].' <'.$recipient['email'].'>';
+				}
+			}
+		}
+		return implode(',', $r);
+	}
+	
+	/**
+		Removes cruft from a multipart message chunk
+	**/		
+	function _clean_chunk($chunk)
+	{
+		return trim(preg_replace("/Content-(Type|ID|Disposition|Transfer-Encoding):.*?".NL."/is", "", $chunk));
+	}
+	
+	
+	/**
+		Writes our array of base64-encoded attachments into actual files in the tmp directory
+	**/		
+	function _write_attachments()
+	{
+		$r = array();
+		ee()->load->helper('file');
+    	foreach($this->email_out['attachments'] as $attachment)
+    	{
+    		if(write_file(realpath(sys_get_temp_dir()).'/'.$attachment['name'], base64_decode($attachment['content'])))
+    		{
+    			$r[$attachment['name']] = realpath(sys_get_temp_dir()).'/'.$attachment['name'];
+    		}
+    	}
+    	return $r;
+	}
+	
+	/**
+		Translates a multi-dimensional array into the odd kind of array expected by cURL post
+	**/		
+	function _http_build_post($arrays, &$new = array(), $prefix = null)
+	{	
+	    foreach($arrays as $key => $value)
+	    {
+		    $k = isset( $prefix ) ? $prefix . '[' . $key . ']' : $key;
+	        if(is_array($value))
+	        {
+	            $this->_http_build_post($value, $new, $k);
+	        }
+	        else
+	        {
+	            $new[$k] = $value;
+	        }
+	    }
 	}
 
 	/**

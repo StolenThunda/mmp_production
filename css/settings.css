@@ -60,9 +60,9 @@
     }
     
     .stick-here {
-        /* display: flex !important;
+        display: flex !important;
         justify-content: space-around !important;
-        align-items: flex-start !important; */
+        align-items: flex-start !important;
     }
     
     span>ul {
