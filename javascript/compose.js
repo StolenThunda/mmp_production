@@ -1,4 +1,95 @@
 $(document).ready(function() {
+    // Set caret position easily in jQuery
+    // Written by and Copyright of Luke Morton, 2011
+    // Licensed under MIT
+    (function($) {
+        // Behind the scenes method deals with browser
+        // idiosyncrasies and such
+        $.caretTo = function(el, index) {
+            if (el.createTextRange) {
+                var range = el.createTextRange();
+                range.move('character', index);
+                range.select();
+            } else if (el.selectionStart !== null) {
+                el.focus();
+                el.setSelectionRange(index, index);
+            }
+        };
+
+        // The following methods are queued under fx for more
+        // flexibility when combining with $.fn.delay() and
+        // jQuery effects.
+
+        // Set caret to a particular index
+        $.fn.caretTo = function(index, offset) {
+            return this.queue(function(next) {
+                if (isNaN(index)) {
+                    var i = $(this).val().indexOf(index);
+                    if (i == -1) i = $(this).text().indexOf(index);
+                    if (offset === true) {
+                        i += index.length;
+                    } else if (offset) {
+                        i += offset;
+                    }
+
+                    $.caretTo(this, i);
+                } else {
+                    $.caretTo(this, index);
+                }
+
+                next();
+            });
+        };
+
+        // Set caret to beginning of an element
+        $.fn.caretToStart = function() {
+            return this.caretTo(0);
+        };
+
+        // Set caret to the end of an element
+        $.fn.caretToEnd = function() {
+            return this.queue(function(next) {
+                $.caretTo(this, $(this).val().length);
+                next();
+            });
+        };
+    })(jQuery);
+    var service_list = $('h2:contains("Services")').next('ul');
+    service_list
+        .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')
+        .addClass('service-list');
+    var active_services = $('#active_services').val();
+    if (active_services) {
+        $.each(service_list.children(), function() {
+            var list_item = $(this).text().toLowerCase();
+            if (active_services && active_services.indexOf(list_item) > -1) {
+                $(this).addClass('enabled-service');
+            } else {
+                $(this).addClass('disabled-service');
+            }
+            $(this).attr('data-service', list_item);
+        });
+    } else {
+        service_list.hide();
+    }
+    $('.service-list').sortable({
+        axis: 'y',
+        opacity: 0.5,
+        update: function() {
+            var serviceOrder = [];
+            $('.service-list li').each(function() {
+                serviceOrder.push($(this).data('service'));
+            });
+            $.post($('.service-list').data('actionUrl'), {
+                service_order: serviceOrder.toString(),
+                CSRF_TOKEN: EE.CSRF_TOKEN
+            });
+        }
+    });
+
+    function newFunction() {
+        return 'escortService';
+    }
     $.fn.extend({
         val_with_linenum: function(v) {
             return this.each(() => {
@@ -94,7 +185,7 @@ function resetRecipients(all) {
         file_recip.unwrap();
     }
     // reset emails and errors
-    $('input[name=recipient').val('');
+    $('input[name=recipient]').val('');
     $('#csv_errors').html('');
 
     // reset recipient label
@@ -334,11 +425,15 @@ function showPlaceholders(headers) {
                     // Insert text into textarea at cursor position and replace selected text
                     var cursorPosStart = message.prop('selectionStart');
                     var cursorPosEnd = message.prop('selectionEnd');
+                    var insertedText = $(this).text();
                     var v = message.val();
                     var textBefore = v.substring(0, cursorPosStart);
                     var textAfter = v.substring(cursorPosEnd, v.length);
-                    message.val(textBefore + $(this).text() + textAfter);
-                    message.focus();
+                    message.val(textBefore + insertedText + textAfter);
+                    $(this).caretTo(insertedText, true);
+                    // cursorPosEnd = cursorPosEnd + insertedText.length;
+                    // message.focus();
+                    // message.setSelectionRange(cursorPosEnd, cursorPosEnd);
                 }
             })
             .wrap('<tr><td align="center"></td></tr>')

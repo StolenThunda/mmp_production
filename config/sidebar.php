@@ -6,9 +6,12 @@
             'email' => array(
                 'links' => array('compose', 'sent' )
             ),
-            // 'services' => array(
-            //     'links' => array()
-            // )
+            // 'settings' => array(
+            //     'links' => array('options')
+            // ),
+            'services' => array(
+                'links' => array()
+            )
         )
     );
 //EOF
