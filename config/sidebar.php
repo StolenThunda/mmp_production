@@ -7,6 +7,12 @@
             'email' => array(
                 'links' => array('compose', 'sent' )
             ),
+<<<<<<< Updated upstream
+=======
+            // 'settings' => array(
+            //     'links' => array('options')
+            // ),
+>>>>>>> Stashed changes
             'services' => array(
                 'links' => array()
             )

@@ -8,9 +8,9 @@ $(document).ready(function() {
         $.caretTo = function(el, index) {
             if (el.createTextRange) {
                 var range = el.createTextRange();
-                range.move("character", index);
+                range.move('character', index);
                 range.select();
-            } else if (el.selectionStart != null) {
+            } else if (el.selectionStart !== null) {
                 el.focus();
                 el.setSelectionRange(index, index);
             }
@@ -53,7 +53,7 @@ $(document).ready(function() {
                 next();
             });
         };
-    }(jQuery));
+    })(jQuery);
     var service_list = $('h2:contains("Services")').next('ul');
     service_list
         .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')

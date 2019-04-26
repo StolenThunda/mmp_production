@@ -50,7 +50,6 @@ class Composer {
 	 */
 	public function compose(EmailCache $email = NULL)
 	{
-		console_message(ee()->session->userdata('location'), __METHOD__);
 		$default = array(
 			'from'		 	=> ee()->session->userdata('email'),
 			'recipient'  	=> '',
@@ -301,14 +300,6 @@ class Composer {
 		)));
 		console_message($vars, __METHOD__);
 		return $vars;
-        return array(
-            'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-            'breadcrumb' => array(
-                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => lang(EXT_NAME),
-                ee('CP/URL')->make(EXT_SETTINGS_PATH .'/email')->compile() => lang('email_title')
-            ),
-            'heading' => lang('compose_heading') 
-        );
 	}
 
 	/**
@@ -735,19 +726,20 @@ class Composer {
 			}
 		}
 		
+		$formatted_message = $this->formatMessage($email);
 		for ($x = 0; $x < $number_to_send; $x++)
 		{
 			$email_address = array_shift($recipient_array);
 
 			if ($csv_lookup_loaded){
-				$tmp_message = $this->formatMessage($email);
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
-				// $tmp_message = strtr($email->message, $record);
-				if ($email->mailtype == 'markdown')  $tmp_plaintext = $tmp_message;
+				// $formatted_message = strtr($email->message, $record);
 				console_message($record, __METHOD__);
+
 				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
 				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
+
 				// $to = $record[$this->csv_email_column]; 
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
@@ -759,25 +751,25 @@ class Composer {
 					'bcc'				=> $email->bcc,
 					'recipient_array'	=> array(),
 					'subject'			=> str_replace('(TEMPLATE) ', '', $email->subject),
-					'message'			=> $tmp_message,
+					'message'			=> $formatted_message,
 					'mailtype'			=> $email->mailtype,
 					'wordwrap'	  		=> $email->wordwrap,
 					'text_fmt'			=> $email->text_fmt,
 					'total_sent'		=> 0,
-					'plaintext_alt'		=> $tmp_message,
+					'plaintext_alt'		=> $email->message,
 					'attachments'		=> $this->attachments,
 				);
 
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
-				ee()->typography->initialize(array(
-					'bbencode_links' => FALSE,
-					'parse_images'	=> FALSE,
-					'parse_smileys'	=> FALSE
-				));
-				$cache_data['text'] = $email->message;
+				// ee()->typography->initialize(array(
+				// 	'bbencode_links' => FALSE,
+				// 	'parse_images'	=> FALSE,
+				// 	'parse_smileys'	=> FALSE
+				// ));
+				$cache_data['text'] = $formatted_message;
 				$cache_data['lookup'] = $record;
-				$cache_data['html'] = ee()->typography->parse_type($cache_data['message'], array(
+				$cache_data['html'] = ee()->typography->parse_type($email->message, array(
 					'text_format'    => ($email->text_fmt == 'markdown') ? 'markdown' : 'xhtml',
 					'html_format'    => 'all',
 					'auto_links'	 => 'n',
@@ -1015,17 +1007,16 @@ private function _removeMail(EmailCache $email){
 						break;				
 					case 'mandrill':
 						$key = (!empty($settings['mandrill_api_key'])) ? $settings['mandrill_api_key'] : "";
-						$log_message = sprintf(lang('using_alt_credentials'), $service, $key, $str_settings);
-						$key = "";
-						if (!empty($settings['mandrill_test_api_key']) && $key == ""){
+						if (!empty($settings['mandrill_test_api_key'])){ // && $key == ""){
 							$key = $settings['mandrill_test_api_key'];
-							ee()->logger->developer($log_message);
 						}
+						$log_message = sprintf(lang('using_alt_credentials'), $service, $key, $service, $str_settings);
+						ee()->logger->developer($log_message);
 						if($key !== ""){
 							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
 							$sent = $this->_send_mandrill($key, $subaccount);
 							console_message($log_message, __METHOD__);
-							ee()->session->set_flashdata(array('message_error' => $log_message));
+							// ee()->session->set_flashdata(array('message_error' => $log_message));
 							$missing_credentials = false;
 						}
 						break;
@@ -1068,7 +1059,7 @@ private function _removeMail(EmailCache $email){
 					ee()->logger->developer(sprintf(lang('could_not_deliver'), $service));
 				}
 			}
-			
+			console_message($sent, __METHOD__);
 			if($sent == true)
 			{
 				ee()->extensions->end_script = true;
@@ -1144,8 +1135,6 @@ private function _removeMail(EmailCache $email){
 
 		$content['message']['tags'] = array(EXT_NAME . " " . EXT_VERSION);
 
-		$content['message']['auto_html'] = TRUE;
-
 		$merge_vars = array(
 			array(
 				'rcpt' => $content['message']['to'][0]['email'],
@@ -1154,7 +1143,9 @@ private function _removeMail(EmailCache $email){
 		);
 		unset($content['message']['lookup']);
 
-		$content['message']['merge_vars'] = $merge_vars;
+		// $content['message']['auto_html'] = FALSE;
+		// $content['message']['auto_text'] = TRUE;
+		$content['message']['global_merge_vars'] = $merge_vars;
 						
 		$headers = array(
 	    	'Accept: application/json',
@@ -1171,7 +1162,7 @@ private function _removeMail(EmailCache $email){
 		$content = json_encode($content);
 				
 		console_message($content,__METHOD__);	
-
+		ee()->logger->developer($content);
 		return $this->_curl_request('https://mandrillapp.com/api/1.0/messages/'.$method.'.json', $headers, $content);
 	}
 	
