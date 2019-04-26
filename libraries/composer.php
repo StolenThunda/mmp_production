@@ -726,7 +726,7 @@ class Composer {
 			}
 		}
 		
-		$formatted_message = $this->formatMessage($email);
+		$formatted_message = $this->formatMessage($email, TRUE);
 		for ($x = 0; $x < $number_to_send; $x++)
 		{
 			$email_address = array_shift($recipient_array);
@@ -734,13 +734,14 @@ class Composer {
 			if ($csv_lookup_loaded){
 				$tmp_plaintext = $email->plaintext_alt; 
 				$record = $this->csv_lookup[$email_address];
-				// $formatted_message = strtr($email->message, $record);
 				console_message($record, __METHOD__);
-
-				// standard 'First Last <email address> format (update: rejected by Php's FILTER_VALIDATE_EMAIL)
-				$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
-
-				// $to = $record[$this->csv_email_column]; 
+				// standard 'First Last <email address> format
+				if (isset($record['{{first_name}}']) && isset($record['{{last_name}}'] )){
+					$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
+				}else{
+					$to = $record[$this->csv_email_column]; 
+				}
+								
 				$cache_data = array(
 					'cache_date'		=> ee()->localize->now,
 					'total_sent'		=> 0,
@@ -762,19 +763,10 @@ class Composer {
 
 				$singleEmail = ee('Model')->make('EmailCache', $cache_data);
 				$singleEmail->save();
-				// ee()->typography->initialize(array(
-				// 	'bbencode_links' => FALSE,
-				// 	'parse_images'	=> FALSE,
-				// 	'parse_smileys'	=> FALSE
-				// ));
-				$cache_data['text'] = $formatted_message;
+				
 				$cache_data['lookup'] = $record;
-				$cache_data['html'] = ee()->typography->parse_type($email->message, array(
-					'text_format'    => ($email->text_fmt == 'markdown') ? 'markdown' : 'xhtml',
-					'html_format'    => 'all',
-					'auto_links'	 => 'n',
-					'allow_img_url'  => 'y'
-				));
+				$cache_data['html'] = $formatted_message;
+				
 				console_message($cache_data, __METHOD__);
 				if ($this->email_send($cache_data)){
 					$singleEmail->total_sent++;
@@ -792,7 +784,7 @@ class Composer {
 		$email->save();
 		return $email->total_sent;
 	}
-private function _removeMail(EmailCache $email){
+	private function _removeMail(EmailCache $email){
 		$email->delete();
 
 		$debug_msg = ee()->email->print_debugger(array());
@@ -846,7 +838,7 @@ private function _removeMail(EmailCache $email){
 	 * @param	obj	$email	An EmailCache object
 	 * @return	string		The  message
 	 */
-	private function formatMessage(EmailCache $email)
+	private function formatMessage(EmailCache $email, $markdown_only = FALSE)
 	{
 		$message = $email->message;
 		if ($email->text_fmt != 'none' && $email->text_fmt != '')
@@ -857,13 +849,19 @@ private function _removeMail(EmailCache $email){
 				'parse_images'	=> FALSE,
 				'parse_smileys'	=> FALSE
 			));
-
-			$message = ee()->typography->parse_type($email->message, array(
-				'text_format'    => $email->text_fmt,
-				'html_format'    => 'all',
-				'auto_links'	 => 'n',
-				'allow_img_url'  => 'y'
-			));
+			if ($markdown_only){
+				$message = ee()->typography->markdown($email->message, array(
+						'convert_curly' => FALSE,
+				));
+			}else{
+				$message = ee()->typography->parse_type($email->message, array(
+					'text_format'    => $email->text_fmt,
+					'convert_curly' => FALSE,
+					'html_format'    => 'all',
+					'auto_links'	 => 'n',
+					'allow_img_url'  => 'y'
+				));
+			}
 		}
 		return $message;
 	}
@@ -906,10 +904,9 @@ private function _removeMail(EmailCache $email){
 		$this->email_out['lookup'] =  $this->email_in['lookup'];
 		
 		$this->email_in['finalbody'] = $this->email_in['message'];
-		
-		$this->email_out['text'] = $this->email_in['text'];
 
-		
+		$this->email_out['html'] = $this->email_in['html'];
+
 		if($this->debug == true)
 		{
 			console_message($this->email_in);
@@ -982,7 +979,7 @@ private function _removeMail(EmailCache $email){
 		
 		// Set HTML/Text and attachments
 		// $this->_body_and_attachments();
-		$this->email_out['html'] = $this->email_in['html'];
+		
 		
 		if($this->debug == true)
 		{
@@ -1007,11 +1004,11 @@ private function _removeMail(EmailCache $email){
 						break;				
 					case 'mandrill':
 						$key = (!empty($settings['mandrill_api_key'])) ? $settings['mandrill_api_key'] : "";
-						if (!empty($settings['mandrill_test_api_key'])){ // && $key == ""){
+						if (!empty($settings['mandrill_test_api_key']) && $key == ""){
 							$key = $settings['mandrill_test_api_key'];
 						}
 						$log_message = sprintf(lang('using_alt_credentials'), $service, $key, $service, $str_settings);
-						ee()->logger->developer($log_message);
+						console_message($log_message,__METHOD__);
 						if($key !== ""){
 							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
 							$sent = $this->_send_mandrill($key, $subaccount);
@@ -1133,7 +1130,7 @@ private function _removeMail(EmailCache $email){
 
 		$content['message']['track_opens'] = TRUE;
 
-		$content['message']['tags'] = array(EXT_NAME . " " . EXT_VERSION);
+		$content['message']['tags'][] = EXT_NAME . " " . EXT_VERSION;
 
 		$merge_vars = array(
 			array(
@@ -1143,9 +1140,8 @@ private function _removeMail(EmailCache $email){
 		);
 		unset($content['message']['lookup']);
 
-		// $content['message']['auto_html'] = FALSE;
-		// $content['message']['auto_text'] = TRUE;
-		$content['message']['global_merge_vars'] = $merge_vars;
+		$content['message']['auto_text'] = TRUE;
+		$content['message']['merge_vars'] = $merge_vars;
 						
 		$headers = array(
 	    	'Accept: application/json',
