@@ -1158,7 +1158,8 @@ class Composer {
 		$content = json_encode($content);
 				
 		console_message($content,__METHOD__);	
-		ee()->logger->developer($content);
+		//TODO: save email data to table
+		// ee()->logger->developer($content);
 		return $this->_curl_request('https://mandrillapp.com/api/1.0/messages/'.$method.'.json', $headers, $content);
 	}
 	

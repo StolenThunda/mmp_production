@@ -137,24 +137,23 @@ class Manymailerplus_mcp
 		);
 		switch ($func) {
 			case 'list':
-				return ee()->mail_svc->get_settings();
+				$vars = ee()->mail_svc->get_settings();
 				break;
 			case 'save':
 				return ee()->mail_svc->save_settings();
 				break;
 			default:
+				// if the current = the service detail page
 				$vars =  ee()->mail_svc->settings_form(array());
 				break;
 		}
 		if (!isset($vars['current_service'])) array_pop($breadcrumbs);
 		$vars['active_service_names'] = ee()->mail_svc->getActiveServiceNames();
 		$vars['sidebar'] = $this->sidebar_options;		
-		// $this->_update_sidebar_options(array_keys($vars['services']) );
 		console_message($vars, __METHOD__);
-
 		return array(
 			'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-			'breadcrumb' => $service_vars['bc'],
+			'breadcrumb' => $breadcrumbs,
 			'heading' => $vars['cp_page_title']
 		);
 	}
