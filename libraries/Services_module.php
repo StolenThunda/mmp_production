@@ -63,7 +63,6 @@ class Services_module {
 
 	function settings_form($all_settings)
 	{	    				
-		// $settings_info = $this->getSettingInfo($all_settings);
 		$settings = $this->get_settings();
 		$services_sorted = array();
 		
@@ -111,13 +110,6 @@ class Services_module {
 				->now();
 		}
 
-		$breadcrumbs = array(
-			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-			ee('CP/URL')->make(EXT_SETTINGS_PATH ."/services")->compile() => lang('services'),
-		);
-		// if the current = the service detail page
-		if (!$this->current_service) array_pop($breadcrumbs);
-
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/services/save');
 		
 		$vars['save_btn_text'] = 'btn_save_settings';
@@ -132,14 +124,10 @@ class Services_module {
 			unset($vars['current_service']);
 		}	   
 		console_message($vars, __METHOD__);
-		return array(
-			'vars' => $vars,			
-			'bc' => $breadcrumbs,
-			);
+		return $vars;
 	}
 
-	function save_settings()
-	{
+	function save_settings(){
 		$settings = $this->get_settings(true);
 		$current_service = '';
 
@@ -189,7 +177,6 @@ class Services_module {
 			}
 		// }
 	}
-
 
 	private function _service_settings(&$vars, $settings){
 			
@@ -270,8 +257,7 @@ class Services_module {
 		return $vars;
 	}
 	
-	public function get_settings($all_sites = false)
-	{
+	public function get_settings($all_sites = false) {
 		$all_settings = $this->model->settings;
 		console_message($this->site_id, __METHOD__);
 		$settings = ($all_sites == true || empty($all_settings)) ? $all_settings : $all_settings[$this->site_id];
@@ -300,6 +286,17 @@ class Services_module {
 		}
         return $settings;
     
+	}
+
+	function getActiveServiceNames(){
+		$settings = $this->get_settings();
+		$active_services = array_filter($settings, function($v, $k){
+			return $v == 'y';
+		}, ARRAY_FILTER_USE_BOTH); 
+		$acts = array_map(function($k){
+			return explode('_', $k)[0];
+		}, array_keys($active_services));
+		return json_encode($acts);
 	}
 
 	function ee_version()
