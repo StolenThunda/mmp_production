@@ -1,14 +1,8 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-use EllisLab\ExpressionEngine\Controller\Utilities;
-use EllisLab\ExpressionEngine\Library\CP\Table;
-// use	manymailerplus\Model\ as EmailCache;
-use EllisLab\ExpressionEngine\Model\Email\EmailCache;
-use EllisLab\ExpressionEngine\View;
 
 class Manymailerplus_mcp 
-    {
-
+{
 	private $version = EXT_VERSION;
 	private $attachments = array();
 	private $csv_lookup = array();
@@ -37,7 +31,13 @@ class Manymailerplus_mcp
 		}
 		ee()->load->helper('debug');
 		ee()->load->helper('html');
+		ee()->load->library('services_module', null, 'mail_svc');
+		ee()->load->library('composer', null, 'mail_funcs');
+		$this->services = ee()->config->item('services', 'services'); 
 		$this->sidebar_loaded = ee()->config->load('sidebar', TRUE, TRUE);
+		$this->sidebar_options = ee()->config->item('options', 'sidebar');
+		$this->_update_sidebar_options(array_keys($this->services));
+
 		if (!$this->sidebar_loaded)
 		{
 			//render page to show errors
@@ -50,27 +50,40 @@ class Manymailerplus_mcp
 			);
 			return ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars);
 		}else{
-			$this->sidebar_options = ee()->config->item('options', 'sidebar');
-			$this->sidebar = ee('CP/Sidebar')->make();
-				foreach(array_keys($this->sidebar_options) as $category){
-					$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
-					// if($category == $vars['active'][0] AND isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
-					if(isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
-						$list_items = $left_nav->addBasicList();	
-						foreach ($this->sidebar_options[$category]['links'] as $link_text) {
-							$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category.'/'.$link_text));
-						}
-					}
-				}
+			$this->makeSidebar();
 		}
+		
 	}
 
-	public static function index(){
+	public function makeSidebar(){
+		$this->sidebar = ee('CP/Sidebar')->make();
+		foreach(array_keys($this->sidebar_options) as $category){
+			$left_nav = $this->sidebar->addHeader(lang("{$category}_title"), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category));
+			if(isset($this->sidebar_options[$category]['links']) AND count($this->sidebar_options[$category]['links']) > 0){
+				$list_items = $left_nav->addBasicList();	
+				foreach ($this->sidebar_options[$category]['links'] as $link_text) {
+					$list_items->addItem(lang(''.$link_text.'_name'), ee('CP/URL',EXT_SETTINGS_PATH.'/'.$category.'/'.$link_text));
+				}
+			}
+		}
+	}
+	
+	function _update_sidebar_options($additional_links = array())
+	{
+		if (!empty($additional_links)){
+			if (array_key_exists('services', $this->sidebar_options)){
+				$this->sidebar_options['services']['links'] = array_unique(array_merge($this->sidebar_options['services']['links'], $additional_links));
+			}
+		}
+	}
+	
+	public function index(){
 		$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/'.__FUNCTION__);
 		$vars['cp_page_title'] = lang(__FUNCTION__. '_title');
 		$vars['save_btn_text'] = "";
 		$vars['save_btn_text_working'] = "";
 		$vars['current_action'] = __FUNCTION__;
+		$vars['categories'] = array_keys($this->sidebar_options);
 		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile();
 		$vars['sections'] = array();
 		console_message($vars, __METHOD__);
@@ -83,436 +96,52 @@ class Manymailerplus_mcp
 			);
 	}
 
-	/**
-	 * Index
-	 *
-	 * @param	obj	$email	An EmailCache object for use in re-populating the form (see: resend())
-	 */
-	public static function compose(EmailCache $email = NULL)
-	{
-		$default = array(
-			'from'		 	=> ee()->session->userdata('email'),
-			'recipient'  	=> '',
-			'cc'			=> '',
-			'bcc'			=> '',
-			'subject' 		=> '',
-			'message'		=> '',
-			'plaintext_alt'	=> '',
-			'mailtype'		=> ee()->config->item('mail_format'),
-			'wordwrap'		=> ee()->config->item('word_wrap'),
-		);
-
-		$vars['mailtype_options'] = array(
-			'text'		=> lang('plain_text'),
-			'markdown'	=> lang('markdown'),
-			'html'		=> lang('html')
-		);
-
-		$member_groups = array();
-
-		if ( ! is_null($email))
-		{
-			$default['from'] = $email->from_email;
-			$default['recipient'] = $email->recipient;
-			$default['cc'] = $email->cc;
-			$default['bcc'] = $email->bcc;
-			$default['subject'] = str_replace('', '(TEMPLATE) ', $email->subject);
-			$default['message'] = $email->message;
-			$default['plaintext_alt'] = $email->plaintext_alt;
-			$default['mailtype'] = $email->mailtype;
-			$default['wordwrap'] = $email->wordwrap;
-		}
-		// Set up member group emailing options
-		if (ee()->cp->allowed_group('can_email_member_groups'))
-		{
-			$groups = ee('Model')->get('MemberGroup')
-				->filter('site_id', ee()->config->item('site_id'))
-				->all();
-
-			$member_groups = [];
-			$disabled_groups = [];
-			foreach ($groups as $group)
-			{
-				$member_groups[$group->group_id] = $group->group_title;
-
-				if (ee('Model')->get('Member')
-					->filter('group_id', $group->group_id)
-					->count() == 0)
-				{
-					$disabled_groups[] = $group->group_id;
-				}
-			}
-		}
-
-		$csvHTML = array(
-			form_textarea(
-				array(
-					'name' => 'csv_recipient',
-					'id' => 'csv_recipient',
-					'rows' => '10',
-					'class' => 'required',
-				)
-			),
-			form_button('convert_csv','Convert CSV','class="btn"')
-		);
-
-		if ($default['mailtype'] != 'html')
-		{
-			ee()->javascript->output('$("textarea[name=\'plaintext_alt\']").parents("fieldset").eq(0).hide();');
-		}
-
-		$vars['sections'] = array(
-			array(
-				array(
-					'title' => 'your_email',
-					'fields' => array(
-						'from' => array(
-							'type' => 'text',
-							'value' => $default['from'],
-							'required' => TRUE
-						)
-					)
-				),
-			),
-				'recipient_options' => array(
-					array(
-						'title' => 'file_recipient',
-						'desc' => 'file_recipient_desc',
-						'fields' => array(
-							'files' => array(
-								'type' => 'html',
-								'content' => form_input(
-									array(
-										'id' => 'files',
-										'name' => 'files[]',
-										'type' => 'hidden',
-										'value' => '0'
-									)
-								)
-							),
-							'file_recipient' => array(
-								'type' => 'file',
-								'content' => ee('CP/FilePicker')
-									->make()
-									->getLink('Choose File')
-									->withValueTarget('files')
-									->render()
-							),
-							'dump_vars' => array(
-								'type' => 'hidden',
-								'content' => form_button('btnDump','Dump Hidden Values', 'class="btn" onClick="dumpHiddenVals()"')
-							),
-							'csv_object' => array(
-								'type' => 'hidden',
-								'value' => ''
-							),
-							'mailKey' => array(
-								'type' => 'hidden',
-								'value' => ''
-							),
-						)
-					),
-					array(
-						'title' => 'csv_recipient',
-						'desc' => 'csv_recipient_desc',
-						'fields' => array(
-							'csv_errors' => array(
-								'type' => 'html',
-								'content' => '<span id="csv_errors"></span>'
-							),
-							'csv_recipient' => array(
-								'type' => 'html',
-								'content' => implode('<br />', $csvHTML)
-							),
-							
-							'csv_reset' => array(
-								'type' => 'html',
-								'content' => form_button('btnReset','Reset CSV Data', 'class="btn"')
-							),
-						)
-					),
-					array(
-						'title' => 'primary_recipients',
-						'desc' => 'primary_recipients_desc',
-						'fields' => array(
-							'recipient' => array(
-								'type' => 'text',
-								'value' => $default['recipient']
-							),'csv_content' => array(
-								'type' => 'html',
-								'content' => '<table class=\'fixed_header\' id=\'csv_content\'></table>'
-							)
-						)
-					),
-				),
-			'compose_email_detail' =>array(
-				
-				array(
-					'title' => 'email_subject',
-					'fields' => array(
-						'subject' => array(
-							'type' => 'text',
-							'required' => TRUE,
-							'value' => $default['subject']
-						)
-					)
-				),
-				array(
-					'title' => 'email_body',
-					'fields' => array(
-						'message' => array(
-							'type' => 'html',
-							'content' => ee('View')->make(EXT_SHORT_NAME.':email/body-field')
-								->render($default + $vars),
-							'required' => TRUE
-						)
-					)
-				),
-				array(
-					'title' => 'plaintext_body',
-					'desc' => 'plaintext_alt',
-					'fields' => array(
-						'plaintext_alt' => array(
-							'type' => 'textarea',
-							'value' => $default['plaintext_alt'],
-							'required' => TRUE
-						)
-					)
-				),
-				array(
-					'title' => 'attachment',
-					'desc' => 'attachment_desc',
-					'fields' => array(
-						'attachment' => array(
-							'type' => 'file'
-						)
-					)
-				)
-			),
-				
-			'other_recipient_options' => array(	
-				array(
-					'title' => 'cc_recipients',
-					'desc' => 'cc_recipients_desc',
-					'fields' => array(
-						'cc' => array(
-							'type' => 'text',
-							'value' => $default['cc']
-						)
-					)
-				),
-				array(
-					'title' => 'bcc_recipients',
-					'desc' => 'bcc_recipients_desc',
-					'fields' => array(
-						'bcc' => array(
-							'type' => 'text',
-							'value' => $default['bcc']
-						)
-					)
-				)
-			)
-		);
-
-		if (ee()->cp->allowed_group('can_email_member_groups'))
-		{
-			$vars['sections']['other_recipient_options'][] = array(
-				'title' => 'add_member_groups',
-				'desc' => 'add_member_groups_desc',
-				'fields' => array(
-					'member_groups' => array(
-						'type' => 'checkbox',
-						'choices' => $member_groups,
-						'disabled_choices' => $disabled_groups,
-					)
-				)
-			);
-		}
-   		$vars['cp_page_title'] = lang('compose_heading');
-		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
-		// $vars['cp_hompage_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
-		$vars['save_btn_text'] = lang('compose_send_email');
-		$vars['save_btn_text_working'] = lang('compose_sending_email');
-		ee()->cp->add_to_foot(link_tag(array(
-			'href' => 'http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css',
-			'rel' => 'stylesheet',
-			'type' => 'text/css',
-		)));
-        return array(
-            'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-            'breadcrums' => array(
-                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => lang(EXT_NAME)
-            ),
-            'heading' => lang('compose_heading') 
-        );
-	}
-
 	function email($func = ""){
+		$breadcrumbs = array(
+			ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
+			ee('CP/URL')->make(EXT_SETTINGS_PATH .'/email')->compile() => lang('email_title')
+		);
 		switch ($func) {
 			case 'compose':
 			case 'send':
 			case 'sent':
-				return $this->{$func}();
+				$vars = ee()->mail_funcs->{$func}();
 				break;
 			case 'resend':
 			case 'batch':
 				$id = ee()->uri->segment(7, 0);
-				return $this->resend($id);
+				return ee()->mail_funcs->{$func}($id);
 				break;
 			default:
+				array_pop($breadcrumbs);
 				$vars['base_url'] = ee('CP/URL',EXT_SETTINGS_PATH.'/email');
 				$vars['cp_page_title'] = lang('email_title');
 				$vars['save_btn_text'] = "";
 				$vars['save_btn_text_working'] = "";
 				$vars['current_action'] = 'email';
 				$vars['sections'] = array();
-				console_message($vars, __METHOD__);
-				return array(
-					'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-					'breadcrumb' => array(
-						ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME,
-					),
-					'heading' => $vars['cp_page_title']
-					);
-				break;
 		}
+		$vars['categories'] = array_keys($this->sidebar_options);
+		console_message($vars, __METHOD__);
+		return array(
+			'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+			'breadcrumb' => $breadcrumbs,
+			'heading' => $vars['cp_page_title']
+			);
 	}
 
-	/**
-	 * Prepopulate form to send to specific member
-	 *
-	 * @param int $id
-	 * @access public
-	 * @return void
-	 */
-	public function member($id)
-	{
-		$member = ee('Model')->get('Member', $id)->first();
-		$this->member = $member;
-
-		if (empty($member))
-		{
-			show_404();
-		}
-
-		$cache_data = array(
-			'recipient'	=> $member->email,
-			'from_email' => ee()->session->userdata('email')
-		);
-
-		$email = ee('Model')->make('EmailCache', $cache_data);
-		$email->removeMemberGroups();
-		$this->compose($email);
-	}
-
-	/**
-	 * Send Email
-	 */
-	public function send()
-	{
-		ee()->load->library('email');
-
-		// Fetch $_POST data
-		// We'll turn the $_POST data into variables for simplicity
-
-		$groups = array();
-
-		$form_fields = array(
-			'subject',
-			'message',
-			'plaintext_alt',
-			'mailtype',
-			'wordwrap',
-			'from',
-			'attachment',
-			'recipient',
-			'cc',
-			'bcc',
-			'csv_object',
-			'formatted_emails',
-			'mailKey'
-		);
-
-		$wordwrap = 'n';
-
-		foreach ($_POST as $key => $val)
-		{
-			if ($key == 'member_groups')
-			{
-				// filter empty inputs, like a hidden no-value input from React
-				$groups = array_filter(ee()->input->post($key));
-			}
-			elseif (in_array($key, $form_fields))
-			{
-				$$key = ee()->input->post($key);
-			}
-		}
-		
-		// create lookup array for easy email lookup
-		if (isset($csv_object) AND $csv_object !== ""){
-			$rows =  json_decode($csv_object, TRUE);
-			foreach ($rows as $row){
-				$this->csv_lookup[$row[$mailKey]] = $row;
-			}
-		}
-
-		//  Verify privileges
-		if (count($groups) > 0 && ! ee()->cp->allowed_group('can_email_member_groups'))
-		{
-			show_error(lang('not_allowed_to_email_member_groups'));
-		}
-
-		// Set to allow a check for at least one recipient
-		$_POST['total_gl_recipients'] = count($groups);
-
-		ee()->load->library('form_validation');
-		ee()->form_validation->set_rules('subject', 'lang:subject', 'required|valid_xss_check');
-		ee()->form_validation->set_rules('message', 'lang:message', 'required');
-		ee()->form_validation->set_rules('from', 'lang:from', 'required|valid_email');
-		ee()->form_validation->set_rules('cc', 'lang:cc', 'valid_emails');
-		ee()->form_validation->set_rules('bcc', 'lang:bcc', 'valid_emails');
-		ee()->form_validation->set_rules('recipient', 'lang:recipient', 'valid_emails|callback__check_for_recipients');
-		ee()->form_validation->set_rules('attachment', 'lang:attachment', 'callback__attachment_handler');
-
-		if (ee()->form_validation->run() === FALSE)
-		{
-			ee()->view->set_message('issue', lang('compose_error'), lang('compose_error_desc'));
-
-			return $this->compose();
-		}
-
-		$name = ee()->session->userdata('screen_name');
-
-		// ee()->view->cp_page_title = lang('email_success');
-		$debug_msg = '';
-
-		switch ($mailtype)
-		{
-			case 'text':
-				$text_fmt = 'none';
-				$plaintext_alt = '';
+	function services($func = ""){
+		switch ($func) {
+			case 'list':
+				return ee()->mail_svc->get_settings();
 				break;
-
-			case 'markdown':
-				$text_fmt = 'markdown';
-				$mailtype = 'html';
-				$plaintext_alt = $message;
+			case 'save':
+				return ee()->mail_svc->save_settings();
 				break;
-
-			case 'html':
-				// If we strip tags and it matches the message, then there was
-				// not any HTML in it and we'll format for them.
-				if ($message == strip_tags($message))
-				{
-					$text_fmt = 'xhtml';
-				}
-				else
-				{
-					$text_fmt = 'none';
-				}
+			default:
+				$vars =  ee()->mail_svc->settings_form(array());
 				break;
 		}
-
 		$subject = "${subject} (TEMPLATE) ";
 
 		// Assign data for caching
@@ -1123,91 +752,17 @@ class Manymailerplus_mcp
 		$vars['save_btn_text_working'] = "";
 		$vars['sections'] = array();
 		$vars['breadcrumb'] = ee('CP/URL')->make(EXT_SETTINGS_PATH.'/email/sent')->compile();
+		$vars['active_service_names'] = ee()->mail_svc->getActiveServiceNames();
+		$vars['sidebar'] = $this->sidebar_options;		
+		// $this->_update_sidebar_options(array_keys($vars['services']) );
 
 		console_message($vars, __METHOD__);
-        return array(
-            'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
-            'breadcrumb' => array(
-                ee('CP/URL')->make(EXT_SETTINGS_PATH)->compile() => EXT_NAME
-            ),
-            'heading' => $vars['cp_page_title']
-        );
 
+		return array(
+			'body' => ee('View')->make(EXT_SHORT_NAME.':compose_view')->render($vars),
+			'breadcrumb' => $service_vars['bc'],
+			'heading' => $vars['cp_page_title']
+		);
 	}
-
-	
-	/**
-	 * Check for recipients
-	 *
-	 * An internal validation function for callbacks
-	 *
-	 * @param	string
-	 * @return	bool
-	 */
-	public function _check_for_recipients($str)
-	{
-		console_message($str, __METHOD__);
-		if ( ! $str && ee()->input->post('total_gl_recipients') < 1)
-		{
-			ee()->form_validation->set_message('_check_for_recipients', lang('required'));
-			return FALSE;
-		}
-
-		return TRUE;
-	}
-
-	/**
-	 * Attachment Handler
-	 *
-	 * Used to manage and validate attachments. Must remain public,
-	 * it's a form validation callback.
-	 *
-	 * @return	bool
-	 */
-	public function _attachment_handler()
-	{
-		// File Attachments?
-		if ( ! isset($_FILES['attachment']['name']) OR empty($_FILES['attachment']['name']))
-		{
-			return TRUE;
-		}
-
-		ee()->load->library('upload');
-		ee()->upload->initialize(array(
-			'allowed_types'	=> '*',
-			'use_temp_dir'	=> TRUE
-		));
-
-		if ( ! ee()->upload->do_upload('attachment'))
-		{
-			ee()->form_validation->set_message('_attachment_handler', lang('attachment_problem'));
-			return FALSE;
-		}
-
-		$data = ee()->upload->data();
-
-		$this->attachments[] = $data['full_path'];
-
-		return TRUE;
-	}
-
-	/**
-	 * Delete Attachments
-	 */
-	private function deleteAttachments($email)
-	{
-		console_message($email, __METHOD__);
-		foreach ($email->attachments as $file)
-		{
-			if (file_exists($file))
-			{
-				unlink($file);
-			}
-		}
-
-		$email->attachments = array();
-		$email->save();
-	}
-
 }
 // END CLASS
