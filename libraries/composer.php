@@ -737,7 +737,7 @@ class Composer {
 				console_message($record, __METHOD__);
 				// standard 'First Last <email address> format
 				if (isset($record['{{first_name}}']) && isset($record['{{last_name}}'] )){
-					$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; 
+					$to = "{$record['{{first_name}}']} {$record['{{last_name}}']}  <{$record['{{email}}']}>"; //TODO: https://trello.com/c/1lffhlXm
 				}else{
 					$to = $record[$this->csv_email_column]; 
 				}
@@ -1004,15 +1004,16 @@ class Composer {
 						break;				
 					case 'mandrill':
 						$key = (!empty($settings['mandrill_api_key'])) ? $settings['mandrill_api_key'] : "";
-						if (!empty($settings['mandrill_test_api_key']) && $key == ""){
-							$key = $settings['mandrill_test_api_key'];
-						}
-						$log_message = sprintf(lang('using_alt_credentials'), $service, $key, $service, $str_settings);
-						console_message($log_message,__METHOD__);
-						if($key !== ""){
+						$test_key = (!empty($settings['mandrill_test_api_key'])) ? $settings['mandrill_test_api_key'] : "";
+						$test_mode = ($settings['mandrill_testmode__yes_no'] == 'y');
+						$active_key = $test_mode ? $test_key : $key;
+						$log_message = sprintf(lang('using_alt_credentials'), $service, $active_key, $service, $str_settings);
+						if ($test_mode) console_message($log_message,__METHOD__);
+						if($active_key !== ""){
 							$subaccount = (!empty($settings['mandrill_subaccount']) ? $settings['mandrill_subaccount'] : '');
-							$sent = $this->_send_mandrill($key, $subaccount);
+							$sent = $this->_send_mandrill($active_key, $subaccount);
 							console_message($log_message, __METHOD__);
+							
 							// ee()->session->set_flashdata(array('message_error' => $log_message));
 							$missing_credentials = false;
 						}

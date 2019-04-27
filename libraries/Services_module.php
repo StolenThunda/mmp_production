@@ -147,7 +147,7 @@ class Services_module {
 
 		$this->model->settings = $settings;
 		$this->model->save();
-		console_message($current_service, __METHOD__);
+		console_message("$current_service : ". json_encode($settings), __METHOD__);
 		ee('CP/Alert')->makeInline('shared-form')
 	      ->asSuccess()
 		  ->withTitle(lang('settings_saved'))
@@ -199,67 +199,112 @@ class Services_module {
 			)
 		);
 			
+		// $control_type = "text";
+		// $choice_options = FALSE;
+		// $enabled_disabled = array(
+		// 	'y' => lang('enabled'),
+		// 	'n' => lang('disabled')
+		// );
 		if (array_key_exists($this->current_service, $vars['services'])){
 			foreach($vars['services'][$this->current_service] as $field_name)
 			{
-				// console_message($field_name, __METHOD__);
-				// if (is_array($field_name)){
-				// 	foreach ($field_name as $key => $value) {
-				// 		# code...
-				// 		switch ($value) {
-				// 			case 'checkbox':
-				// 			case 'inline_radio':
-				// 				$field = array(
-				// 					$key => array(
-				// 						'type' => 'inline_radio',
-				// 						'choices' => array(
-				// 							'y' => lang('enabled'),
-				// 							'n' => lang('disabled')
-				// 						),
-				// 						'value' => (!empty($field_name['value']) && $field_name['value'] == 'y') ? 'y' : 'n'
-				// 					)
-				// 				);
-				// 			default:
-				// 				# code...
-				// 				$field = array(
-				// 					$field_name = array(
-				// 						'type' => $value,
-				// 						'value' => (!empty($field_name['value'])) ? $field_name['value'] : '',
-				// 					)
-				// 				);
-				// 				break;
-				// 		}
+				
+				$i = $this->getServiceFields($field_name);
+				console_message($i);
+				extract($i, EXTR_OVERWRITE);
+			
+				// $is_multi_choice = is_array($field_name);
+				// if ($is_multi_choice) {
+				// 	$choice_options = $field_name;					
+				// 	$field_name = array_keys($field_name)[0];					
+				// 	console_message($choice_options, __METHOD__);
+				// }
 
-				// 		$sections[] = array(
-				// 			'title' => lang(''.$key),
-				// 			'desc' =>  '',
-				// 			'fields' => array(
-				// 				$key => $field
-				// 			)
-				// 		);
+				// $is_control = strpos($field_name, '__');
+				
+				// if ($is_control !== FALSE){
+				// 	$control_type = substr($field_name, ($is_control + 2 ));
+				// 	console_message("$field_name ( $is_control ) :  $control_type", __METHOD__);
+				// } 
+				
+				$field = array('type' => $control_type);
+				switch ($control_type) {
+					case 'file':
+					case 'image':
+						$filepicker = ee('CP/FilePicker')->make();
+						$link = $filepicker->getLink($field_name);
+						$field = array_merge($field, array(							
+							'value' => $link->render(),
+						));
+						break;
+					case 'select':
+					case 'dropdown':
+					case 'radio':
+					case 'yes_no':
+					case 'checkbox':
+					case 'inline_radio':
 						
-				// 	}
-				// }else{
+						$choices = (is_array($choice_options)) ? $choice_options[key($choice_options)] : $enabled_disabled;
+						$field = array_merge($field, array(							
+							'choices' => $choices,
+							'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
+						));						
+						break;
+					case 'textarea':
+					case 'short-text':
+						$field = array_merge($field, array('value' => (!empty($settings[$field_name])) ? $settings[$field_name] : ''));	
+						break;
+					default:
+						$field = array(
+							'type' => 'text',
+							'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
+						);
+					}
+						
 					$sections[] = array(
 						'title' => lang(''.$field_name),
-						'desc' => ($field_name == 'mandrill_test_api_key' || $field_name == 'mandrill_subaccount') ? lang('optional') : '',
+						'desc' =>  (in_array($field_name, array('mandrill_test_api_key','mandrill_subaccount'))) ? lang('optional') : '',
 						'fields' => array(
-							$field_name => array(
-								'type' => 'text',
-								'value' => (!empty($settings[$field_name])) ? $settings[$field_name] : '',
-							)
+							$field_name => $field
 						)
 					);
-				// }
 			}
 		}
+		console_message($sections, __METHOD__);
 		$vars['sections'] = array($sections);
 		return $vars;
+	}
+
+	public function getServiceFields($field_name, $type = 'text'){
+		$info = array();
+		$is_multi_choice = is_array($field_name);
+		$choice_options = FALSE;
+		if ($is_multi_choice) {
+			$choice_options = $field_name;					
+			$field_name = array_keys($field_name)[0];					
+			console_message($choice_options, __METHOD__);
+		}
+
+		$is_control = strpos($field_name, '__');
+			
+		if ($is_control !== FALSE){
+			$type = substr($field_name, ($is_control + 2 ));
+			console_message("$field_name ( $is_control ) :  $type", __METHOD__);
+		} 
+
+		return array(
+			'field_name'  => $field_name,
+			'choice_options' => $choice_options,
+			'control_type' => $type,
+			'enabled_disabled' => $enabled_disabled = array(
+				'y' => lang('enabled'),
+				'n' => lang('disabled')
+			)
+		);
 	}
 	
 	public function get_settings($all_sites = false) {
 		$all_settings = $this->model->settings;
-		console_message($this->site_id, __METHOD__);
 		$settings = ($all_sites == true || empty($all_settings)) ? $all_settings : $all_settings[$this->site_id];
                 
         // Check for config settings - they will override database settings
