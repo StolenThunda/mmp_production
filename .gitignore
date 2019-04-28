@@ -8,3 +8,5 @@ manymailerplus/View/sidebar_view.php
 ext.manymailerplus.php
 libraries/ext.manymailerplus.php
 libraries/serialized_email_cache.txt
+node_modules/
+package*
