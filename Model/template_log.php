@@ -18,7 +18,7 @@ use EllisLab\ExpressionEngine\Service\Model\Model;
 class Template_Log extends Model {
 
 	protected static $_primary_key = 'email_id';
-	protected static $_table_name = 'exp_manymailer_emails';
+	protected static $_table_name = 'exp_mmp_production_emails';
 
 	protected static $_validation_rules = array(
 		'email_cache_id'    => 'required',

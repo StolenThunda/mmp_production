@@ -7,9 +7,8 @@
  * @copyright Copyright (c) 2003-2018, EllisLab, Inc. (https://ellislab.com)
  * @license   https://expressionengine.com/license Licensed under Apache License, Version 2.0
  */
-use EllisLab\ExpressionEngine\Controller\Utilities;
 use EllisLab\ExpressionEngine\Library\CP\Table;
-use EllisLab\ExpressionEngine\Model\Email\EmailCache;
+use ExpressionEngine\Model\Email\EmailCache;
 /**
  * Copy of Communicate Controller
  */
@@ -26,7 +25,8 @@ class Composer {
 	{
 		$CI = ee();
 
-		if ( ! ee()->cp->allowed_group('can_access_comm'))
+		// if ( ! ee()->cp->allowed_group('can_access_comm'))
+		if (!ee('Permission')->hasAll())
 		{
 			show_error(lang('unauthorized_access'), 403);
 		} 
@@ -60,6 +60,7 @@ class Composer {
 			'plaintext_alt'	=> '',
 			'mailtype'		=> ee()->config->item('mail_format'),
 			'wordwrap'		=> ee()->config->item('word_wrap'),
+			'show_table' => ee()->config->item('show_table'),
 		);
 
 		$vars['mailtype_options'] = array(
@@ -68,7 +69,13 @@ class Composer {
 			'html'		=> lang('html')
 		);
 
-		$member_groups = array();
+		$default['import_options'] = array(
+			'paste' => lang('paste_csv'),
+			'file' => lang('file_import_csv'),
+		);
+
+		$roles = array();
+
 
 		if ( ! is_null($email))
 		{
@@ -81,25 +88,23 @@ class Composer {
 			$default['plaintext_alt'] = $email->plaintext_alt;
 			$default['mailtype'] = $email->mailtype;
 			$default['wordwrap'] = $email->wordwrap;
+
+			if (!isset($this->member)) {
+				$roles = $email->Roles->pluck('role_id');
+			}
+
 		}
-		// Set up member group emailing options
-		if (ee()->cp->allowed_group('can_email_member_groups'))
-		{
-			$groups = ee('Model')->get('MemberGroup')
-				->filter('site_id', ee()->config->item('site_id'))
-				->all();
+		// Set up member role emailing options
+		if (ee('Permission')->can('email_roles')) {
+			$roles = ee('Model')->get('Role')->all();
 
-			$member_groups = [];
-			$disabled_groups = [];
-			foreach ($groups as $group)
-			{
-				$member_groups[$group->group_id] = $group->group_title;
+			$member_roles = [];
+			$disabled_roles = [];
+			foreach ($roles as $role) {
+				$member_roles[$role->role_id] = $role->name;
 
-				if (ee('Model')->get('Member')
-					->filter('group_id', $group->group_id)
-					->count() == 0)
-				{
-					$disabled_groups[] = $group->group_id;
+				if ($role->getAllMembers()->count() == 0) {
+					$disabled_roles[] = $role->role_id;
 				}
 			}
 		}
@@ -274,20 +279,21 @@ class Composer {
 			)
 		);
 
-		if (ee()->cp->allowed_group('can_email_member_groups'))
-		{
+		if (ee('Permission')->can('email_roles')) {
 			$vars['sections']['other_recipient_options'][] = array(
-				'title' => 'add_member_groups',
-				'desc' => 'add_member_groups_desc',
+				'title' => 'add_member_roles',
+				'desc' => 'add_member_roles_desc',
 				'fields' => array(
-					'member_groups' => array(
+					'member_roles' => array(
 						'type' => 'checkbox',
-						'choices' => $member_groups,
-						'disabled_choices' => $disabled_groups,
+						'choices' => $member_roles,
+						'disabled_choices' => $disabled_roles,
 					)
 				)
 			);
 		}
+
+		
 		$vars['cp_page_title'] = lang('compose_heading');
 		// $vars['categories'] = array_keys($this->sidebar_options);
 		$vars['base_url'] = ee('CP/URL', EXT_SETTINGS_PATH.'/email/send');
@@ -324,7 +330,6 @@ class Composer {
 			'from_email' => ee()->session->userdata('email')
 		);
 
-		// $email = ee('Model')->get(EXT_SHORT_NAME.':', $cache_data);
 		$email = ee('Model')->get('EmailCache', $cache_data);
 		$email->removeMemberGroups();
 		$this->compose($email);
@@ -340,7 +345,7 @@ class Composer {
 		// Fetch $_POST data
 		// We'll turn the $_POST data into variables for simplicity
 
-		$groups = array();
+		$roles = array();
 
 		$form_fields = array(
 			'subject',
@@ -361,10 +366,10 @@ class Composer {
 
 		foreach ($_POST as $key => $val)
 		{
-			if ($key == 'member_groups')
+			if ($key == 'member_roles')
 			{
 				// filter empty inputs, like a hidden no-value input from React
-				$groups = array_filter(ee()->input->post($key));
+				$roles = array_filter(ee()->input->post($key));
 			}
 			elseif (in_array($key, $form_fields))
 			{
@@ -382,13 +387,14 @@ class Composer {
 		}
 
 		//  Verify privileges
-		if (count($groups) > 0 && ! ee()->cp->allowed_group('can_email_member_groups'))
+		// if (count($roles) > 0 && ! ee()->cp->allowed_group('can_email_member_groups'))
+		if (count($roles) > 0 && !ee('Permission')->can('email_roles')) 
 		{
 			show_error(lang('not_allowed_to_email_member_groups'));
 		}
 
 		// Set to allow a check for at least one recipient
-		$_POST['total_gl_recipients'] = count($groups);
+		$_POST['total_gl_recipients'] = count($roles);
 
 		ee()->load->library('form_validation');
 		ee()->form_validation->set_rules('subject', 'lang:subject', 'required|valid_xss_check');
@@ -461,17 +467,15 @@ class Composer {
 		console_message($cache_data, __METHOD__);
 		$email = ee('Model')->make('EmailCache', $cache_data);
 		$email->save();
-
-		// Get member group emails
-		$member_groups = ee('Model')->get('MemberGroup', $groups)
+		
+		// Get member role emails
+		$member_roles = ee('Model')->get('Role', $roles)
 			->with('Members')
 			->all();
 
 		$email_addresses = array();
-		foreach ($member_groups as $group)
-		{
-			foreach ($group->getMembers() as $member)
-			{
+		foreach ($member_roles as $role) {
+			foreach ($role->getAllMembers() as $member) {
 				$email_addresses[] = $member->email;
 			}
 		}
@@ -516,7 +520,7 @@ class Composer {
 
 		//  Store email cache
 		$email->recipient_array = $email_addresses;
-		$email->setMemberGroups(ee('Model')->get('MemberGroup', $groups)->all());
+		// $email->setMemberGroups(ee('Model')->get('MemberGroup', $roles)->all());
 		$email->save();
 		$id = $email->cache_id;
 
@@ -639,7 +643,7 @@ class Composer {
 			show_error(lang('problem_with_id'));
 		}
 
-		$caches = ee('Model')->get(EXT_SHORT_NAME.':EmailCachePlus', $id)
+		$caches = ee('Model')->get('EmailCache', $id)
 			->with('MemberGroups')
 			->all();
 
@@ -1483,7 +1487,8 @@ class Composer {
 	 */
 	public static function sent()
 	{
-		if ( ! ee()->cp->allowed_group('can_send_cached_email'))
+		// if ( ! ee()->cp->allowed_group('can_send_cached_email'))
+		if ( !ee('Permission')->hasAll())
 		{
 			show_error(lang('not_allowed_to_email_cache'));
 		}
@@ -1520,7 +1525,7 @@ class Composer {
 
 		$count = 0;
 
-		// $emails =ee('Model')->get(EXT_SHORT_NAME.':');
+		// $emails =ee('Model')->get(EXT_SHORT_NAME.':EmailCache');
 		$emails =ee('Model')->get('EmailCache');
 
 		$search = $table->search;

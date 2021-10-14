@@ -1,7 +1,7 @@
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 
-class Manymailerplus_mcp 
+class MMP_Production_mcp 
 {
 	private $version = EXT_VERSION;
 	private $attachments = array();
@@ -15,7 +15,8 @@ class Manymailerplus_mcp
 		$CI = ee();
 		$this->debug = FALSE;
 		ee()->extensions->end_script = TRUE;
-		if ( ! ee()->cp->allowed_group('can_access_comm'))
+		// if ( ! ee()->cp->allowed_group('can_access_comm'))
+		if (!ee('Permission')->hasAll())
 		{
 			show_error(lang('unauthorized_access'), 403);
 		} 

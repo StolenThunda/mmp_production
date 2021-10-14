@@ -56,7 +56,7 @@ $(document).ready(function() {
     })(jQuery);
     var service_list = $('h2:contains("Services")').next('ul');
     service_list
-        .attr('action-url', 'admin.php?/cp/addons/settings/manymailerplus/services/list')
+        .attr('action-url', 'admin.php?/cp/addons/settings/mmp_production/services/list')
         .addClass('service-list');
     var active_services = $('#active_services').val();
     if (active_services) {
